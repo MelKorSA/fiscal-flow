@@ -82,7 +82,7 @@ export function AddAccountForm({ onAddAccount }: AddAccountFormProps) {
           {/* Common Fields */}
           <div className="space-y-1.5">
             <Label htmlFor="account-name">Account Name</Label>
-            <Input id="account-name" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., Savings Account, 3-Year FD" required />
+            <Input id="account-name" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., Savings Account, 3-Year FD" required suppressHydrationWarning={true} />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="account-type">Account Type</Label>

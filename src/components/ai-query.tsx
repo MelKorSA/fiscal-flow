@@ -3,8 +3,8 @@
 import React, { useState } from 'react';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
-import { Bot, Send, Loader2 } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Bot, Send, Loader2, Sparkles, SearchIcon } from 'lucide-react';
 
 interface AIQueryProps {
   onQuerySubmit: (query: string) => Promise<string>; // Function to call with the query
@@ -34,36 +34,89 @@ export function AIQuery({ onQuerySubmit }: AIQueryProps) {
   };
 
   return (
-    <Card className="shadow-sm hover:shadow-md transition-shadow bg-white dark:bg-gray-800 rounded-lg">
-      <CardHeader>
-          <div className="flex items-center space-x-2">
-             <Bot className="h-5 w-5 text-purple-600" />
-             <CardTitle>Ask AI</CardTitle>
+    <Card className="border-0 shadow-sm bg-white/80 dark:bg-[#2C2C2E]/80 backdrop-blur-md rounded-2xl overflow-hidden">
+      <CardHeader className="pb-3 border-b border-[#F2F2F7] dark:border-[#38383A]">
+        <div className="flex items-center space-x-2">
+          <div className="p-1.5 bg-[#EDF4FE] dark:bg-[#1C3049] rounded-full">
+            <Bot className="h-4 w-4 text-[#007AFF] dark:text-[#0A84FF]" />
           </div>
-         <CardDescription>Ask questions about your finances (e.g., "How much did I spend on groceries?", "What was my total income last month?").</CardDescription>
+          <CardTitle className="text-base font-semibold text-[#1D1D1F] dark:text-white">Ask AI</CardTitle>
+        </div>
+        <CardDescription className="text-xs text-[#8E8E93] dark:text-[#98989D]">
+          Ask questions about your finances like "How much did I spend last month?" or "What's my current balance?"
+        </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 pt-4">
         <form onSubmit={handleSubmit} className="flex space-x-2">
-          <Input 
-            type="text"
-            placeholder="Type your question..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            disabled={isLoading}
-            className="flex-1"
-          />
-          <Button type="submit" disabled={isLoading || !query.trim()} size="icon">
-            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-             <span className="sr-only">Send Query</span>
+          <div className="relative flex-1">
+            <SearchIcon className="absolute left-3 top-2.5 h-4 w-4 text-[#8E8E93] dark:text-[#98989D]" />
+            <Input 
+              type="text"
+              placeholder="Type your question..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              disabled={isLoading}
+              className="pl-9 rounded-xl bg-[#F2F2F7]/60 dark:bg-[#38383A]/60 backdrop-blur-md shadow-sm border-0 focus-visible:ring-[#007AFF] dark:focus-visible:ring-[#0A84FF] focus-visible:ring-opacity-30"
+              suppressHydrationWarning={true}
+            />
+          </div>
+          <Button 
+            type="submit" 
+            disabled={isLoading || !query.trim()} 
+            className="rounded-full bg-[#007AFF] hover:bg-[#0071E3] dark:bg-[#0A84FF] dark:hover:bg-[#0A7AEF] h-10 w-10 p-0 flex items-center justify-center"
+          >
+            {isLoading ? 
+              <Loader2 className="h-4 w-4 animate-spin text-white" /> : 
+              <Send className="h-4 w-4 text-white" />
+            }
+            <span className="sr-only">Send Query</span>
           </Button>
         </form>
-         {/* Response Area */} 
+        
         {(isLoading || response) && (
-            <div className="p-3 bg-muted/50 dark:bg-muted/30 rounded-md text-sm min-h-[40px]">
-                {isLoading && <p className="text-muted-foreground italic flex items-center"><Loader2 className="mr-2 h-4 w-4 animate-spin" />Thinking...</p>} 
-                {response && <p className="text-foreground">{response}</p>} 
+          <div className={`rounded-xl p-4 ${response ? "bg-[#F2F2F7]/60 dark:bg-[#38383A]/60" : "bg-white/30 dark:bg-[#2C2C2E]/30"} backdrop-blur-md min-h-[60px] transition-all duration-200`}>
+            {isLoading && (
+              <div className="flex items-center gap-2 text-[#8E8E93] dark:text-[#98989D]">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <p className="text-sm font-medium">Processing your question...</p>
+              </div>
+            )} 
+            {response && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-[#007AFF] dark:text-[#0A84FF]" />
+                  <p className="text-sm font-medium text-[#8E8E93] dark:text-[#98989D]">AI Response</p>
+                </div>
+                <p className="text-sm text-[#1D1D1F] dark:text-white leading-relaxed">{response}</p>
+              </div>
+            )} 
+          </div>
+        )}
+
+        {!isLoading && !response && (
+          <div className="pt-2 pb-2">
+            <div className="flex flex-wrap gap-2">
+              <button 
+                onClick={() => setQuery("How much did I spend on groceries?")}
+                className="px-3 py-1.5 text-xs font-medium rounded-full bg-[#F2F2F7] dark:bg-[#38383A] text-[#1D1D1F] dark:text-white hover:bg-[#E5E5EA] dark:hover:bg-[#48484A] transition-colors"
+              >
+                Spending on groceries
+              </button>
+              <button 
+                onClick={() => setQuery("What's my current balance?")}
+                className="px-3 py-1.5 text-xs font-medium rounded-full bg-[#F2F2F7] dark:bg-[#38383A] text-[#1D1D1F] dark:text-white hover:bg-[#E5E5EA] dark:hover:bg-[#48484A] transition-colors"
+              >
+                Current balance
+              </button>
+              <button 
+                onClick={() => setQuery("How much have I spent this month?")}
+                className="px-3 py-1.5 text-xs font-medium rounded-full bg-[#F2F2F7] dark:bg-[#38383A] text-[#1D1D1F] dark:text-white hover:bg-[#E5E5EA] dark:hover:bg-[#48484A] transition-colors"
+              >
+                Monthly spending
+              </button>
             </div>
-         )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
