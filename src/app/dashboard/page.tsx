@@ -14,6 +14,7 @@ import { FixedDepositList } from '@/components/fixed-deposit-list';
 import { Budget } from '@/components/budget';
 import { AIQuery } from '@/components/ai-query';
 import { DashboardHeader } from '@/components/dashboard-header';
+import { SearchResults } from '@/components/search-results/search-results';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlusCircle, LayoutGrid, Activity, Banknote, ChevronDown, BarChart3, CreditCard, ArrowUpCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -96,6 +97,8 @@ function DashboardContent() {
   const [accounts, setAccounts] = useState<Account[]>(() => loadFromLocalStorage(LS_KEYS.ACCOUNTS, defaultInitialAccounts, ['startDate']));
   const [expenses, setExpenses] = useState<Expense[]>(() => loadFromLocalStorage(LS_KEYS.EXPENSES, [], ['date']));
   const [income, setIncome] = useState<Income[]>(() => loadFromLocalStorage(LS_KEYS.INCOME, [], ['date']));
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   
   // Animation refs
   const contentRef = useRef<HTMLDivElement>(null);
@@ -157,6 +160,20 @@ function DashboardContent() {
   useEffect(() => { saveToLocalStorage(LS_KEYS.ACCOUNTS, accounts); }, [accounts]);
   useEffect(() => { saveToLocalStorage(LS_KEYS.EXPENSES, expenses); }, [expenses]);
   useEffect(() => { saveToLocalStorage(LS_KEYS.INCOME, income); }, [income]);
+
+  // --- Search Handler ---
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    if (query.trim()) {
+      setIsSearchModalOpen(true);
+    } else {
+      setIsSearchModalOpen(false);
+    }
+  };
+
+  const closeSearchModal = () => {
+    setIsSearchModalOpen(false);
+  };
 
   // --- State Update Handlers with Toasts ---
   const handleAddAccount = (newAccountData: Omit<Account, 'id'>) => {
@@ -256,7 +273,15 @@ function DashboardContent() {
 
   return (
     <div className="flex min-h-screen flex-col bg-[#F5F5F7] dark:bg-[#1A1A1A]">
-      <DashboardHeader />
+      <DashboardHeader onSearch={handleSearch} />
+      <SearchResults
+        query={searchQuery}
+        expenses={expenses}
+        income={income}
+        accounts={accounts}
+        isOpen={isSearchModalOpen}
+        onClose={closeSearchModal}
+      />
       <main ref={contentRef} className="flex-1 overflow-y-auto p-5 md:p-6 lg:p-8 max-w-7xl mx-auto w-full">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
           <div>
