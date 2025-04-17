@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
-import { Toaster } from '@/components/ui/sonner'; // Import the Toaster
+import { Toaster } from '@/components/ui/sonner';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Finance Dashboard', // Updated title
+  title: 'Finance Dashboard',
   description: 'Personal budget and expense tracker',
 };
 
@@ -24,11 +24,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning> {/* Add suppressHydrationWarning for potential theme/extension conflicts */} 
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased font-sans`}> {/* Added font-sans */} 
-        {/* You might want a ThemeProvider here later for dark mode */} 
+    <html lang="en" suppressHydrationWarning>
+      {/* Ensure no whitespace directly inside <html>, <head> is implicit */}
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased font-sans`}>
         {children}
-        <Toaster richColors position="top-right" /> {/* Add the Toaster component */}
+        <Toaster richColors position="top-right" />
       </body>
     </html>
   );
