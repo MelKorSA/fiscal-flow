@@ -2,12 +2,20 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { ThemeToggle } from './theme-toggle'
-import { Activity, Bell, Search, X } from 'lucide-react'
+import { Activity, Bell, Search, X, BrainCircuit, Menu, Home } from 'lucide-react'
 import { gsap } from 'gsap'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { cn } from '@/lib/utils'
 import { AnimatePresence, motion } from 'framer-motion'
+import Link from 'next/link'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { usePathname } from 'next/navigation'
 
 interface DashboardHeaderProps {
   className?: string;
@@ -20,6 +28,8 @@ export function DashboardHeader({ className, onSearch }: DashboardHeaderProps) {
   const searchContainerRef = useRef<HTMLDivElement>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearchFocused, setIsSearchFocused] = useState(false)
+  const [isScrolled, setIsScrolled] = useState(false)
+  const pathname = usePathname()
   
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value)
@@ -65,6 +75,7 @@ export function DashboardHeader({ className, onSearch }: DashboardHeaderProps) {
       // Scroll animation for header
       const handleScroll = () => {
         if (window.scrollY > 20) {
+          setIsScrolled(true)
           gsap.to(header, { 
             boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)', 
             backdropFilter: 'blur(8px)',
@@ -73,6 +84,7 @@ export function DashboardHeader({ className, onSearch }: DashboardHeaderProps) {
             duration: 0.3 
           })
         } else {
+          setIsScrolled(false)
           gsap.to(header, { 
             boxShadow: 'none', 
             backdropFilter: 'blur(0px)',
@@ -87,25 +99,88 @@ export function DashboardHeader({ className, onSearch }: DashboardHeaderProps) {
     }
   }, [])
   
+  // Navigation items
+  const navItems = [
+    { href: '/dashboard', label: 'Dashboard', icon: Home },
+    { href: '/ai-assistant', label: 'AI Assistant', icon: BrainCircuit },
+  ]
+
+  const isActive = (path: string) => pathname === path
+
   return (
     <header 
       ref={headerRef}
       className={cn(
-        "sticky top-0 z-40 flex items-center justify-between w-full px-4 py-3 transition-all duration-300 bg-white/70 dark:bg-[#1A1A1A]/70 backdrop-blur-md",
+        "sticky top-0 z-40 flex items-center justify-between w-full px-4 py-3 transition-all duration-300",
+        isScrolled ? "bg-white/90 dark:bg-[#1A1A1A]/90 backdrop-blur-md" : "bg-white/70 dark:bg-[#1A1A1A]/70",
         className
       )}
     >
-      <div className="flex items-center gap-2">
-        <div ref={logoRef} className="flex items-center mr-4">
+      <div className="flex items-center gap-4">
+        <div ref={logoRef} className="flex items-center mr-2">
           <div className="p-1.5 bg-[#EDF4FE] dark:bg-[#1C3049] rounded-full">
             <Activity className="h-5 w-5 text-[#007AFF] dark:text-[#0A84FF]" />
           </div>
           <span className="font-semibold text-lg ml-2 text-[#1D1D1F] dark:text-white">Fiscal Flow</span>
         </div>
+
+        {/* Desktop Navigation */}
+        <nav className="hidden md:flex items-center space-x-1 ml-2">
+          {navItems.map((item) => (
+            <Link 
+              key={item.href} 
+              href={item.href}
+              className={cn(
+                "px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 flex items-center",
+                isActive(item.href)
+                  ? "bg-[#F2F2F7] dark:bg-[#38383A] text-[#007AFF] dark:text-[#0A84FF]" 
+                  : "text-[#86868B] dark:text-[#A1A1A6] hover:bg-[#F2F2F7]/70 dark:hover:bg-[#38383A]/70"
+              )}
+            >
+              <item.icon className="h-4 w-4 mr-1.5" />
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+
+        {/* Mobile hamburger menu */}
+        <div className="md:hidden">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-9 w-9 p-0 rounded-lg hover:bg-[#F2F2F7] dark:hover:bg-[#38383A]"
+              >
+                <Menu className="h-5 w-5 text-[#1D1D1F] dark:text-white" />
+                <span className="sr-only">Menu</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56 mt-1">
+              {navItems.map((item) => (
+                <DropdownMenuItem key={item.href} asChild>
+                  <Link 
+                    href={item.href} 
+                    className={cn(
+                      "flex items-center justify-start cursor-pointer",
+                      isActive(item.href) && "bg-[#F2F2F7] dark:bg-[#38383A] text-[#007AFF] dark:text-[#0A84FF]"
+                    )}
+                  >
+                    <item.icon className="h-4 w-4 mr-2" />
+                    {item.label}
+                  </Link>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+      
+      <div className="flex items-center">
         <div 
           ref={searchContainerRef}
           className={cn(
-            "hidden md:flex items-center bg-[#F2F2F7] dark:bg-[#38383A] rounded-full px-3 py-1.5 transition-all duration-300",
+            "hidden md:flex items-center bg-[#F2F2F7] dark:bg-[#38383A] rounded-full px-3 py-1.5 mr-3 transition-all duration-300",
             isSearchFocused ? "ring-2 ring-[#007AFF] dark:ring-[#0A84FF] ring-opacity-50 shadow-lg" : ""
           )}
         >
@@ -141,18 +216,18 @@ export function DashboardHeader({ className, onSearch }: DashboardHeaderProps) {
             )}
           </AnimatePresence>
         </div>
-      </div>
       
-      <div className="flex items-center space-x-3">
-        <Button 
-          variant="ghost" 
-          size="icon"
-          className="w-10 h-10 rounded-full relative hover:bg-[#F2F2F7] dark:hover:bg-[#38383A] transition-colors bg-white/70 dark:bg-[#2C2C2E]/70 backdrop-blur-sm shadow-sm"
-        >
-          <Bell className="h-5 w-5 text-[#86868B] dark:text-[#98989D]" />
-          <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-[#FF3B30] dark:bg-[#FF453A] rounded-full ring-2 ring-white dark:ring-[#1A1A1A]" />
-        </Button>
-        <ThemeToggle />
+        <div className="flex items-center space-x-2">
+          <Button 
+            variant="ghost" 
+            size="icon"
+            className="w-9 h-9 rounded-lg relative hover:bg-[#F2F2F7] dark:hover:bg-[#38383A] transition-colors"
+          >
+            <Bell className="h-5 w-5 text-[#86868B] dark:text-[#98989D]" />
+            <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-[#FF3B30] dark:bg-[#FF453A] rounded-full ring-2 ring-white dark:ring-[#1A1A1A]" />
+          </Button>
+          <ThemeToggle />
+        </div>
       </div>
     </header>
   )

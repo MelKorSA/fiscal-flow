@@ -18,13 +18,15 @@ import { SearchResults } from '@/components/search-results/search-results';
 import { RecurringTransactionsList } from '@/components/recurring-transactions-list';
 import { AddRecurringTransactionForm } from '@/components/add-recurring-transaction-form';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle, LayoutGrid, Activity, Banknote, ChevronDown, BarChart3, CreditCard, ArrowUpCircle, Repeat } from 'lucide-react';
+import { PlusCircle, LayoutGrid, Activity, Banknote, ChevronDown, BarChart3, CreditCard, ArrowUpCircle, Repeat, BrainCircuit } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { parseISO, isValid, format } from 'date-fns';
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { availableExpenseCategoriesArray } from '@/config/expense-categories';
 import DashboardLoading from './loading';
+import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // --- Local Storage Keys & Types ---
 const LS_KEYS = {
@@ -101,6 +103,7 @@ function DashboardContent() {
   const [income, setIncome] = useState<Income[]>(() => loadFromLocalStorage(LS_KEYS.INCOME, [], ['date']));
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [showAITooltip, setShowAITooltip] = useState(false);
   
   // Animation refs
   const contentRef = useRef<HTMLDivElement>(null);
@@ -493,6 +496,45 @@ function DashboardContent() {
           </div>
         </div>
       </main>
+
+      {/* Floating AI Assistant Button */}
+      <motion.div 
+        className="fixed z-30 bottom-6 right-6"
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ 
+          type: "spring",
+          delay: 1,
+          stiffness: 260, 
+          damping: 20 
+        }}
+        onMouseEnter={() => setShowAITooltip(true)}
+        onMouseLeave={() => setShowAITooltip(false)}
+      >
+        <AnimatePresence>
+          {showAITooltip && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="absolute bottom-full mb-2 right-0 bg-white dark:bg-[#2C2C2E] rounded-lg px-3 py-2 text-sm font-medium shadow-lg whitespace-nowrap"
+            >
+              <div className="text-[#1D1D1F] dark:text-white">Open AI Assistant</div>
+              <div className="absolute bottom-0 right-5 transform translate-y-1/2 rotate-45 w-2 h-2 bg-white dark:bg-[#2C2C2E]"></div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        <Link href="/ai-assistant">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="bg-gradient-to-r from-[#007AFF] to-[#0A84FF] hover:from-[#0063CC] hover:to-[#006EDB] h-14 w-14 rounded-full flex items-center justify-center shadow-lg"
+          >
+            <BrainCircuit className="h-6 w-6 text-white" />
+          </motion.button>
+        </Link>
+      </motion.div>
     </div>
   );
 }
