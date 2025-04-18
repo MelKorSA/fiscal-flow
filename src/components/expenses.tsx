@@ -20,7 +20,10 @@ import { Badge } from "@/components/ui/badge";
 import { format, isValid, parseISO } from 'date-fns';
 import type { Account } from '@/app/dashboard/page';
 import { Banknote, Landmark, Wallet, ChevronRight, Activity } from 'lucide-react';
-import { getExpenseCategoryDetails } from '@/config/expense-categories';
+import { 
+  getExpenseCategoryDetails, 
+  formatCategoryDisplay 
+} from '@/config/expense-categories';
 
 type Expense = {
   id: string;
@@ -106,6 +109,7 @@ export function Expenses({ expenses, accounts }: ExpensesProps) {
                 {sortedExpenses.map((expense) => {
                   const { name: accountName, icon: accountIcon } = getAccountInfo(expense.accountId, accounts);
                   const { icon: CategoryIcon, color } = getExpenseCategoryDetails(expense.category);
+                  const { display: categoryDisplay } = formatCategoryDisplay(expense.category);
                   const isSplitTransaction = expense.category === 'Split Transaction' || 
                                             expense.description?.includes('(Split transaction)') || 
                                             expense.description?.includes('Split transaction');
@@ -118,7 +122,9 @@ export function Expenses({ expenses, accounts }: ExpensesProps) {
                         </div>
                         <div>
                           <div className="flex items-center gap-1.5">
-                            <p className="font-medium text-sm text-[#1D1D1F] dark:text-white">{expense.category}</p>
+                            <p className="font-medium text-sm text-[#1D1D1F] dark:text-white">
+                              <span className={`text-sm font-medium ${color}`}>{categoryDisplay}</span>
+                            </p>
                             {isSplitTransaction && (
                               <Badge variant="outline" className="h-5 px-1.5 py-0 text-[10px] rounded-full bg-[#EDF4FE] dark:bg-[#1C3049] text-[#007AFF] dark:text-[#0A84FF] border-[#D1E5FE] dark:border-[#0A84FF]/30">
                                 Split

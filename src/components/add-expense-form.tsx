@@ -7,16 +7,26 @@ import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { Calendar as CalendarIcon, DollarSign, Sparkles, Scissors, MoreHorizontal, Plus } from 'lucide-react';
+import { Calendar as CalendarIcon, DollarSign, Sparkles, Scissors, MoreHorizontal, Plus, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { Account } from '@/app/dashboard/page'; 
-import { availableExpenseCategoriesArray, getExpenseCategoryDetails } from '@/config/expense-categories';
+import { 
+  availableExpenseCategoriesArray, 
+  getExpenseCategoryDetails, 
+  availableMainCategoriesArray,
+  getSubcategories,
+  isMainCategory,
+  getParentCategory,
+  formatCategoryDisplay,
+  MainExpenseCategory
+} from '@/config/expense-categories';
 import { Badge } from './ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { Switch } from './ui/switch';
 import { SplitExpenseItem, SplitItem } from './split-expense-item';
 import { v4 as uuidv4 } from 'uuid';
+import { CategorySelect } from './ui/category-select';
 
 interface AddExpenseFormProps {
   onAddExpense: (expense: { 
@@ -321,58 +331,13 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
         // Single category selection when split is disabled
         <div className="space-y-2">
           <Label htmlFor="category" className="text-sm font-medium text-[#86868B] dark:text-[#A1A1A6]">Category</Label>
-          <Select value={category} onValueChange={setCategory} required>
-            <SelectTrigger 
-              id="category" 
-              className="rounded-xl bg-white/60 dark:bg-[#3A3A3C]/60 backdrop-blur-md shadow-sm border-[0.5px] border-[#DADADC] dark:border-[#48484A] focus:ring-[#007AFF] dark:focus:ring-[#0A84FF] focus:ring-opacity-30"
-            >
-              <SelectValue placeholder="Select category" />
-            </SelectTrigger>
-            <SelectContent className="bg-white/90 dark:bg-[#3A3A3C]/90 backdrop-blur-md rounded-lg max-h-[300px]">
-              <div className="grid grid-cols-1 gap-1 p-1 max-h-[300px] overflow-y-auto">
-                {categoriesList.map((cat) => {
-                  const { icon: Icon, color } = getExpenseCategoryDetails(cat);
-                  // Highlight the AI-suggested category
-                  const isAiSuggested = aiSuggestion?.category === cat;
-                  
-                  return (
-                    <SelectItem 
-                      key={cat} 
-                      value={cat}
-                      className={cn(
-                        "focus:bg-[#F2F2F7] dark:focus:bg-[#48484A] rounded-md",
-                        isAiSuggested && "relative bg-[#F2F2F7] dark:bg-[#38383A]"
-                      )}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className="p-1 rounded-full bg-opacity-20" style={{ backgroundColor: `var(--${color.replace('text-', '')}-100)` }}>
-                          <Icon className={`h-4 w-4 ${color}`} />
-                        </div>
-                        <span className="text-[#1D1D1F] dark:text-white">{cat}</span>
-                        {isAiSuggested && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Badge variant="outline" className="ml-1 gap-1 bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800 text-[#007AFF] dark:text-[#0A84FF]">
-                                  <Sparkles className="h-3 w-3" />
-                                  <span className="text-xs">
-                                    {Math.round(aiSuggestion.confidence * 100)}%
-                                  </span>
-                                </Badge>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>AI suggested with {Math.round(aiSuggestion.confidence * 100)}% confidence</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                      </div>
-                    </SelectItem>
-                  );
-                })}
-              </div>
-            </SelectContent>
-          </Select>
+          
+          {/* Replace the standard Select with our hierarchical CategorySelect component */}
+          <CategorySelect
+            value={category}
+            onValueChange={setCategory}
+            placeholder="Select category"
+          />
           
           {/* Show the AI suggestion button if available and not already selected */}
           {aiSuggestion && aiSuggestion.category !== category && (

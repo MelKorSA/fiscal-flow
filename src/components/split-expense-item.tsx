@@ -4,14 +4,8 @@ import React from 'react';
 import { X, DollarSign, Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from './ui/select';
-import { getExpenseCategoryDetails } from '@/config/expense-categories';
+import { getExpenseCategoryDetails, formatCategoryDisplay } from '@/config/expense-categories';
+import { CategorySelect } from './ui/category-select';
 
 export interface SplitItem {
   id: string;
@@ -78,30 +72,12 @@ export function SplitExpenseItem({
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <Select value={item.category} onValueChange={handleCategoryChange}>
-            <SelectTrigger className="rounded-lg bg-white/80 dark:bg-[#2C2C2E]/80 border-[#DADADC] dark:border-[#48484A]">
-              <SelectValue placeholder="Select category" />
-            </SelectTrigger>
-            <SelectContent className="bg-white/90 dark:bg-[#2C2C2E]/90 backdrop-blur-md rounded-lg max-h-[200px] overflow-y-auto">
-              {categories.map((cat) => {
-                const { icon: CategoryIcon, color: catColor } = getExpenseCategoryDetails(cat);
-                return (
-                  <SelectItem
-                    key={cat}
-                    value={cat}
-                    className="focus:bg-[#F2F2F7] dark:focus:bg-[#48484A] rounded-md"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="p-1 rounded-full bg-opacity-20" style={{ backgroundColor: `var(--${catColor.replace('text-', '')}-100)` }}>
-                        <CategoryIcon className={`h-4 w-4 ${catColor}`} />
-                      </div>
-                      <span>{cat}</span>
-                    </div>
-                  </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
+          {/* Using our new CategorySelect component */}
+          <CategorySelect 
+            value={item.category} 
+            onValueChange={handleCategoryChange} 
+            placeholder="Select category"
+          />
         </div>
         <div className="relative">
           <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-[#86868B] dark:text-[#A1A1A6]" />
