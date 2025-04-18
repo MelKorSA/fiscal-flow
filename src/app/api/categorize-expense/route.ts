@@ -7,7 +7,14 @@ const RequestBodySchema = z.object({
   description: z.string().min(1, "Description is required"),
   amount: z.number().optional(),
   date: z.string().optional(),
-  // Add previousTransactions if you want to pass context
+  // Add previousTransactions to the schema
+  previousTransactions: z.array(
+    z.object({
+      description: z.string(),
+      category: z.string(),
+      amount: z.number().optional(),
+    })
+  ).optional(),
 });
 
 export async function POST(request: Request) {
@@ -19,10 +26,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid input', details: validation.error.errors }, { status: 400 });
     }
 
-    const { description, amount, date } = validation.data;
+    // Destructure previousTransactions as well
+    const { description, amount, date, previousTransactions } = validation.data;
 
-    // Call the AI flow on the server
-    const result = await categorizeTxnWithAI(description, amount, date);
+    // Call the AI flow on the server, passing previousTransactions
+    const result = await categorizeTxnWithAI(description, amount, date, previousTransactions);
 
     if (!result.success) {
       // Log the error server-side

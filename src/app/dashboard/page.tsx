@@ -324,7 +324,7 @@ function DashboardContent() {
               </div>
             </CardHeader>
             <CardContent className="pt-4">
-              <div className="text-2xl font-semibold text-[#1D1D1F] dark:text:white">${totalExpenses.toFixed(2)}</div>
+              <div className="text-2xl font-semibold text-[#1D1D1F] dark:text-white">${totalExpenses.toFixed(2)}</div>
               <p className="text-xs text-[#86868B] dark:text-[#A1A1A6] mt-1.5">Tracked across accounts</p>
             </CardContent>
           </Card>
@@ -337,7 +337,7 @@ function DashboardContent() {
               </div>
             </CardHeader>
             <CardContent className="pt-4">
-              <div className={`text-2xl font-semibold ${currentLiquidBalance >= 0 ? 'text-[#1D1D1F] dark:text:white' : 'text-[#FF3B30] dark:text-[#FF453A]'}`}>
+              <div className={`text-2xl font-semibold ${currentLiquidBalance >= 0 ? 'text-[#1D1D1F] dark:text-white' : 'text-[#FF3B30] dark:text-[#FF453A]'}`}>
                 ${currentLiquidBalance.toFixed(2)}
               </div>
               <p className="text-xs text-[#86868B] dark:text-[#A1A1A6] mt-1.5">Sum of Bank & Cash accounts</p>
@@ -349,15 +349,14 @@ function DashboardContent() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* --- Column 1: Accounts & Add Transactions --- */} 
-          <div ref={columnOneRef} className="lg:col-span-1 space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Left Column: Accounts & Transaction Forms */}
+          <div ref={columnOneRef} className="lg:col-span-4 space-y-6">
             <AccountList accounts={accounts} />
-            <AddAccountForm onAddAccount={handleAddAccount} />
             
             <Card className="border-0 shadow-sm bg-white/80 dark:bg-[#2C2C2E]/80 backdrop-blur-md rounded-2xl overflow-hidden hover:shadow-md transition-all duration-300">
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-semibold text-[#1D1D1F] dark:text:white flex items-center">
+                <CardTitle className="text-lg font-semibold text-[#1D1D1F] dark:text-white flex items-center">
                   <BarChart3 className="mr-2 h-5 w-5 text-[#007AFF] dark:text-[#0A84FF]" />
                   Add Transaction
                 </CardTitle>
@@ -370,19 +369,19 @@ function DashboardContent() {
                   <TabsList className="grid w-full grid-cols-3 p-1 mb-3 bg-[#F2F2F7] dark:bg-[#38383A] rounded-full">
                     <TabsTrigger 
                       value="expense" 
-                      className="rounded-full data-[state=active]:bg:white dark:data-[state=active]:bg-[#48484A] data-[state=active]:shadow-sm text-[#86868B] dark:text-[#A1A1A6] data-[state=active]:text-[#1D1D1F] dark:data-[state=active]:text:white transition-all"
+                      className="rounded-full data-[state=active]:bg-white dark:data-[state=active]:bg-[#48484A] data-[state=active]:shadow-sm text-[#86868B] dark:text-[#A1A1A6] data-[state=active]:text-[#1D1D1F] dark:data-[state=active]:text:white transition-all"
                     >
                       Expense
                     </TabsTrigger>
                     <TabsTrigger 
                       value="income"
-                      className="rounded-full data-[state=active]:bg:white dark:data-[state=active]:bg-[#48484A] data-[state=active]:shadow-sm text-[#86868B] dark:text-[#A1A1A6] data-[state=active]:text-[#1D1D1F] dark:data-[state=active]:text:white transition-all"
+                      className="rounded-full data-[state=active]:bg-white dark:data-[state=active]:bg-[#48484A] data-[state=active]:shadow-sm text-[#86868B] dark:text-[#A1A1A6] data-[state=active]:text-[#1D1D1F] dark:data-[state=active]:text:white transition-all"
                     >
                       Income
                     </TabsTrigger>
                     <TabsTrigger 
                       value="recurring"
-                      className="rounded-full data-[state=active]:bg:white dark:data-[state=active]:bg-[#48484A] data-[state=active]:shadow-sm text-[#86868B] dark:text-[#A1A1A6] data-[state=active]:text-[#1D1D1F] dark:data-[state=active]:text:white transition-all"
+                      className="rounded-full data-[state=active]:bg-white dark:data-[state=active]:bg-[#48484A] data-[state=active]:shadow-sm text-[#86868B] dark:text-[#A1A1A6] data-[state=active]:text-[#1D1D1F] dark:data-[state=active]:text:white transition-all"
                     >
                       Recurring
                     </TabsTrigger>
@@ -413,17 +412,21 @@ function DashboardContent() {
               </CardContent>
             </Card>
             
-            <FixedDepositList accounts={fdAccounts} />
+            <AddAccountForm onAddAccount={handleAddAccount} />
           </div>
 
-          {/* --- Column 2: Expenses & Income --- */}
-          <div ref={columnTwoRef} className="lg:col-span-1 space-y-6">
+          {/* Middle Column: Recent Transactions */}
+          <div ref={columnTwoRef} className="lg:col-span-5 space-y-6">
+            {/* Recent Expenses */}
             <Expenses expenses={expenses} accounts={accounts} />
-            <IncomeDisplay totalIncome={totalIncome} />
             
+            {/* Income List */}
+            <IncomeList income={income} accounts={accounts} />
+            
+            {/* Recurring Transactions */}
             <Card className="border-0 shadow-sm bg-white/80 dark:bg-[#2C2C2E]/80 backdrop-blur-md rounded-2xl overflow-hidden hover:shadow-md transition-all duration-300">
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-semibold text-[#1D1D1F] dark:text:white flex items-center">
+                <CardTitle className="text-lg font-semibold text-[#1D1D1F] dark:text-white flex items-center">
                   <Repeat className="mr-2 h-5 w-5 text-[#007AFF] dark:text-[#0A84FF]" />
                   Recurring Transactions
                 </CardTitle>
@@ -440,26 +443,19 @@ function DashboardContent() {
             </Card>
           </div>
           
-          {/* --- Column 3: Budgets & AI Insights --- */}
-          <div className="lg:col-span-1 space-y-6">
-            <AIQuery onQuerySubmit={handleAIQuery}/> 
+          {/* Right Column: Insights & Fixed Deposits */}
+          <div className="lg:col-span-3 space-y-6">
+            {/* AI Query */}
+            <AIQuery onQuerySubmit={handleAIQuery} />
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6"> 
-              <Expenses expenses={expenses} accounts={accounts} />
-              <IncomeList income={income} accounts={accounts} /> 
-              <div className="md:col-span-2">
-                <FixedDepositList accounts={fdAccounts}/>
-              </div>
-              <div className="md:col-span-2">
-                <AISpendingInsights expenses={expenses} income={income} />
-              </div>
-              <div className="md:col-span-2">
-                <RecurringTransactionsList 
-                  recurringTransactions={[]}
-                  onUpdateStatus={() => {}}
-                />
-              </div>
-            </div>
+            {/* Income Display Card */}
+            <IncomeDisplay totalIncome={totalIncome} />
+            
+            {/* Fixed Deposits */}
+            <FixedDepositList accounts={fdAccounts} />
+            
+            {/* AI Spending Insights */}
+            <AISpendingInsights expenses={expenses} income={income} />
           </div>
         </div>
       </main>

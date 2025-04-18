@@ -48,6 +48,8 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
               description,
               amount: amount ? parseFloat(amount) : undefined,
               date: date?.toISOString(),
+              // Pass previousTransactions in the request body
+              previousTransactions: previousTransactions, 
             }),
           });
 
@@ -87,7 +89,8 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
     }, 600);
     
     return () => clearTimeout(timer);
-  }, [description, category]);
+    // Add previousTransactions to dependency array if it can change
+  }, [description, amount, date, previousTransactions, category]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

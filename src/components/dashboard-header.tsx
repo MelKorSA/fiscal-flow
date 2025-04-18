@@ -91,13 +91,15 @@ export function DashboardHeader({ className, onSearch }: DashboardHeaderProps) {
     <header 
       ref={headerRef}
       className={cn(
-        "sticky top-0 z-40 flex items-center justify-between w-full px-4 py-3 transition-all duration-300",
+        "sticky top-0 z-40 flex items-center justify-between w-full px-4 py-3 transition-all duration-300 bg-white/70 dark:bg-[#1A1A1A]/70 backdrop-blur-md",
         className
       )}
     >
       <div className="flex items-center gap-2">
         <div ref={logoRef} className="flex items-center mr-4">
-          <Activity className="h-6 w-6 text-[#007AFF] dark:text-[#0A84FF]" />
+          <div className="p-1.5 bg-[#EDF4FE] dark:bg-[#1C3049] rounded-full">
+            <Activity className="h-5 w-5 text-[#007AFF] dark:text-[#0A84FF]" />
+          </div>
           <span className="font-semibold text-lg ml-2 text-[#1D1D1F] dark:text-white">Fiscal Flow</span>
         </div>
         <div 
@@ -117,7 +119,7 @@ export function DashboardHeader({ className, onSearch }: DashboardHeaderProps) {
             onChange={handleSearchChange}
             onFocus={() => setIsSearchFocused(true)}
             onBlur={() => setIsSearchFocused(false)}
-            className="h-7 border-none shadow-none bg-transparent focus-visible:ring-0 placeholder:text-[#86868B] dark:placeholder:text-[#98989D] w-40 md:w-60"
+            className="h-7 border-none shadow-none bg-transparent focus-visible:ring-0 placeholder:text-[#86868B] dark:placeholder:text-[#98989D] w-40 md:w-60 text-[#1D1D1F] dark:text-white"
           />
           <AnimatePresence>
             {searchQuery && (
@@ -141,14 +143,14 @@ export function DashboardHeader({ className, onSearch }: DashboardHeaderProps) {
         </div>
       </div>
       
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center space-x-3">
         <Button 
           variant="ghost" 
           size="icon"
-          className="rounded-full relative hover:bg-[#F2F2F7] dark:hover:bg-[#38383A] transition-colors"
+          className="w-10 h-10 rounded-full relative hover:bg-[#F2F2F7] dark:hover:bg-[#38383A] transition-colors bg-white/70 dark:bg-[#2C2C2E]/70 backdrop-blur-sm shadow-sm"
         >
           <Bell className="h-5 w-5 text-[#86868B] dark:text-[#98989D]" />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+          <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-[#FF3B30] dark:bg-[#FF453A] rounded-full ring-2 ring-white dark:ring-[#1A1A1A]" />
         </Button>
         <ThemeToggle />
       </div>
