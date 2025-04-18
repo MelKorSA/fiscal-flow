@@ -231,6 +231,46 @@ export function CategorySelect({ value, onValueChange, disabled = false, placeho
     }
   }, []);
 
+  // Add some custom styles
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      .ios-scrollbars::-webkit-scrollbar {
+        width: 6px;
+      }
+      
+      .ios-scrollbars::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      
+      .ios-scrollbars::-webkit-scrollbar-thumb {
+        background-color: rgba(0,0,0,0.1);
+        border-radius: 3px;
+      }
+      
+      .dark .ios-scrollbars::-webkit-scrollbar-thumb {
+        background-color: rgba(255,255,255,0.1);
+      }
+      
+      @media (hover: hover) {
+        .ios-scrollbars::-webkit-scrollbar-thumb {
+          opacity: 0;
+          transition: opacity 0.3s;
+        }
+        
+        .ios-scrollbars:hover::-webkit-scrollbar-thumb {
+          opacity: 1;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+
+    // Cleanup function to remove the style when the component unmounts
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []); // Empty dependency array ensures this runs only once on mount
+
   // Handle category selection
   const handleCategorySelect = (categoryValue: string) => {
     // Add haptic feedback (vibration) if supported
@@ -626,36 +666,3 @@ export function CategorySelect({ value, onValueChange, disabled = false, placeho
     </div>
   );
 }
-
-// Add some custom styles
-const style = document.createElement('style');
-style.textContent = `
-  .ios-scrollbars::-webkit-scrollbar {
-    width: 6px;
-  }
-  
-  .ios-scrollbars::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  
-  .ios-scrollbars::-webkit-scrollbar-thumb {
-    background-color: rgba(0,0,0,0.1);
-    border-radius: 3px;
-  }
-  
-  .dark .ios-scrollbars::-webkit-scrollbar-thumb {
-    background-color: rgba(255,255,255,0.1);
-  }
-  
-  @media (hover: hover) {
-    .ios-scrollbars::-webkit-scrollbar-thumb {
-      opacity: 0;
-      transition: opacity 0.3s;
-    }
-    
-    .ios-scrollbars:hover::-webkit-scrollbar-thumb {
-      opacity: 1;
-    }
-  }
-`;
-document.head.appendChild(style);
