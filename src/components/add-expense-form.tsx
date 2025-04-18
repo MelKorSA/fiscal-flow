@@ -1,33 +1,25 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { Calendar as CalendarIcon, DollarSign, Sparkles, Scissors, MoreHorizontal, Plus, ChevronRight } from 'lucide-react';
+import { Calendar as CalendarIcon, DollarSign, Sparkles, Scissors, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { Account } from '@/app/dashboard/page'; 
 import { 
   availableExpenseCategoriesArray, 
-  getExpenseCategoryDetails, 
-  availableMainCategoriesArray,
-  getSubcategories,
-  isMainCategory,
-  getParentCategory,
-  formatCategoryDisplay,
-  MainExpenseCategory,
   parseCategoryValue
 } from '@/config/expense-categories';
-import { Badge } from './ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { Switch } from './ui/switch';
 import { SplitExpenseItem, SplitItem } from './split-expense-item';
 import { v4 as uuidv4 } from 'uuid';
 import { CategorySelect } from './ui/category-select';
+import { toast } from 'sonner';
 
 interface AddExpenseFormProps {
   onAddExpense: (expense: { 
@@ -47,25 +39,21 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
   const formRef = useRef<HTMLFormElement>(null);
   const [accountId, setAccountId] = useState<string>('');
   const [amount, setAmount] = useState<string>('');
-  const [category, setCategory] = useState<string>(''); // Category state now holds the prefixed value
+  const [category, setCategory] = useState<string>('');
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [description, setDescription] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [aiSuggestion, setAiSuggestion] = useState<{ category: string; confidence: number } | null>(null);
   const [isCategorizing, setIsCategorizing] = useState(false);
   
-  // Split transaction states
   const [isSplitEnabled, setIsSplitEnabled] = useState(false);
   const [splitItems, setSplitItems] = useState<SplitItem[]>([]);
   
-  // Calculate the remaining amount to be allocated
   const totalAmount = parseFloat(amount) || 0;
   const allocatedAmount = splitItems.reduce((sum, item) => sum + (item.amount || 0), 0);
   const remainingAmount = Math.max(0, totalAmount - allocatedAmount);
 
-  // Add a new split item
   const addSplitItem = () => {
-    // Only allow adding split items if there's remaining amount to allocate
     if (remainingAmount > 0) {
       const newItem: SplitItem = {
         id: uuidv4(),
@@ -76,12 +64,10 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
     }
   };
 
-  // Remove a split item
   const removeSplitItem = (id: string) => {
     setSplitItems(splitItems.filter(item => item.id !== id));
   };
 
-  // Update a split item
   const updateSplitItem = (id: string, field: 'category' | 'amount', value: string | number) => {
     setSplitItems(splitItems.map(item => {
       if (item.id === id) {
@@ -91,10 +77,8 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
     }));
   };
 
-  // Reset split items when total amount changes or splitting is disabled
   useEffect(() => {
     if (isSplitEnabled) {
-      // If there are no split items, add the first one with the full amount
       if (splitItems.length === 0 && totalAmount > 0) {
         setSplitItems([{
           id: uuidv4(),
@@ -107,20 +91,17 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
     }
   }, [isSplitEnabled, totalAmount]);
 
-  // Update first split item's category when main category changes
   useEffect(() => {
     if (isSplitEnabled && splitItems.length > 0 && category) {
-      // No need to parse here, split item category select will handle its own prefixed value
       updateSplitItem(splitItems[0].id, 'category', category);
     }
   }, [category]);
 
-  // Categorize transaction when description changes
   useEffect(() => {
     const categorizeTransaction = async () => {
       if (description.trim().length >= 3) {
         setIsCategorizing(true);
-        setAiSuggestion(null); // Clear previous suggestion
+        setAiSuggestion(null);
         try {
           const response = await fetch('/api/categorize-expense', {
             method: 'POST',
@@ -131,7 +112,6 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
               description,
               amount: amount ? parseFloat(amount) : undefined,
               date: date?.toISOString(),
-              // Pass previousTransactions in the request body
               previousTransactions: previousTransactions, 
             }),
           });
@@ -142,37 +122,32 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
 
           const result = await response.json();
 
-          if (result.category) { // Check if category exists in response
+          if (result.category) {
             setAiSuggestion({ 
               category: result.category, 
-              confidence: result.confidence ?? 0 // Use confidence if provided, else 0
+              confidence: result.confidence ?? 0
             });
             
-            // Auto-select the category if confidence is high
             if ((result.confidence ?? 0) >= 0.85 && !category) {
               setCategory(result.category);
             }
           }
         } catch (error) {
           console.error("Error calling categorization API:", error);
-          // Optionally set a default or error state for suggestion
           setAiSuggestion(null);
         } finally {
           setIsCategorizing(false);
         }
       } else {
-        // Clear suggestion if description is too short
         setAiSuggestion(null);
       }
     };
     
-    // Debounce the categorization
     const timer = setTimeout(() => {
       categorizeTransaction();
     }, 600);
     
     return () => clearTimeout(timer);
-    // Add previousTransactions to dependency array if it can change
   }, [description, amount, date, previousTransactions, category]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -184,17 +159,14 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
         const expenseData = {
           accountId,
           amount: numericAmount,
-          // Parse the category value before sending it
           category: isSplitEnabled ? 'Split Transaction' : parseCategoryValue(category),
           date,
           description,
-          // Parse split item category values as well
           splitItems: isSplitEnabled 
             ? splitItems.map(item => ({ ...item, category: parseCategoryValue(item.category) })) 
             : undefined,
         };
         await onAddExpense(expenseData);
-        // Reset form
         formRef.current?.reset();
         setAccountId('');
         setAmount('');
@@ -208,49 +180,38 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
         setIsSubmitting(false);
       }
     } else {
+      let errorMessage = 'Invalid input: ';
+      const missingFields = [];
+      if (!accountId) missingFields.push('account');
+      if (isNaN(numericAmount) || numericAmount <= 0) missingFields.push('amount');
+      if (!isSplitEnabled && !category) missingFields.push('category');
+      if (isSplitEnabled && !allSplitItemsValid()) missingFields.push('split details (ensure all items have category/amount and total matches)');
+      if (!date) missingFields.push('date');
+      
+      errorMessage += `Please provide ${missingFields.join(', ')}.`;
+      toast.error(errorMessage);
       console.error('Invalid input - ensure account, amount, category, and date are set.');
     }
   };
 
-  // Validate all split items have a category and amount
   const allSplitItemsValid = () => {
     if (splitItems.length === 0) return false;
-    
-    // All split items should have a category and amount > 0
     const allValid = splitItems.every(item => item.category && item.amount > 0);
-    
-    // Total allocated amount should match the total expense amount
     const totalAllocated = splitItems.reduce((sum, item) => sum + item.amount, 0);
-    const totalMatches = Math.abs(totalAllocated - totalAmount) < 0.01; // Allow for small floating point differences
-    
+    const totalMatches = Math.abs(totalAllocated - totalAmount) < 0.01;
     return allValid && totalMatches;
   };
 
-  // Use the actual expense categories array if the provided categories are empty
   const categoriesList = categories.length ? categories : availableExpenseCategoriesArray;
 
-  // Apply the AI suggestion
   const applyAiSuggestion = () => {
     if (aiSuggestion) {
       setCategory(aiSuggestion.category);
     }
   };
 
-  // Allocate remaining amount to split items
-  const distributeRemainingAmount = () => {
-    if (splitItems.length === 0 || remainingAmount <= 0) return;
-    
-    const amountPerItem = remainingAmount / splitItems.length;
-    setSplitItems(splitItems.map(item => ({
-      ...item,
-      amount: item.amount + amountPerItem
-    })));
-  };
-
-  // Evenly distribute the total amount among all split items
   const distributeEvenly = () => {
     if (splitItems.length === 0 || totalAmount <= 0) return;
-    
     const amountPerItem = totalAmount / splitItems.length;
     setSplitItems(splitItems.map(item => ({
       ...item,
@@ -301,7 +262,6 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
             type="number"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            onBlur={() => formRef.current?.requestSubmit()}
             placeholder="0.00"
             className="pl-9 rounded-xl bg-white/60 dark:bg-[#3A3A3C]/60 backdrop-blur-md shadow-sm border-[0.5px] border-[#DADADC] dark:border-[#48484A] focus-visible:ring-[#007AFF] dark:focus-visible:ring-[#0A84FF] focus-visible:ring-opacity-30"
             required
@@ -311,7 +271,6 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
         </div>
       </div>
 
-      {/* Split Transaction Toggle */}
       <div className="flex items-center justify-between bg-[#F9F9FA] dark:bg-[#38383A] p-3 rounded-xl">
         <div className="flex items-center gap-2">
           <div className="p-1.5 bg-[#EDF4FE] dark:bg-[#1C3049] rounded-full">
@@ -331,18 +290,13 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
       </div>
 
       {!isSplitEnabled ? (
-        // Single category selection when split is disabled
         <div className="space-y-2">
           <Label htmlFor="category" className="text-sm font-medium text-[#86868B] dark:text-[#A1A1A6]">Category</Label>
-          
-          {/* Replace the standard Select with our hierarchical CategorySelect component */}
           <CategorySelect
             value={category}
             onValueChange={setCategory}
             placeholder="Select category"
           />
-          
-          {/* Show the AI suggestion button if available and not already selected */}
           {aiSuggestion && aiSuggestion.category !== category && (
             <div className="mt-1 flex items-center justify-between">
               <div className="flex items-center gap-1 text-xs text-[#86868B] dark:text-[#A1A1A6]">
@@ -359,8 +313,6 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
               </Button>
             </div>
           )}
-          
-          {/* Show categorizing indicator */}
           {isCategorizing && description.length >= 3 && !aiSuggestion && (
             <div className="flex items-center gap-2 text-xs text-[#86868B] dark:text-[#A1A1A6] mt-1">
               <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
@@ -369,7 +321,6 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
           )}
         </div>
       ) : (
-        // Split transaction UI when split is enabled
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <Label className="text-sm font-medium text-[#86868B] dark:text-[#A1A1A6]">Split Categories</Label>
@@ -386,8 +337,6 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
               </Button>
             </div>
           </div>
-
-          {/* Display split items */}
           {splitItems.map((item, index) => (
             <SplitExpenseItem
               key={item.id}
@@ -400,16 +349,12 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
               onRemove={removeSplitItem}
             />
           ))}
-          
-          {/* Show remaining amount if not fully allocated */}
           {remainingAmount > 0 && (
             <div className="flex items-center justify-between py-2 px-4 bg-[#F2F2F7] dark:bg-[#38383A] rounded-xl">
               <span className="text-sm text-[#1D1D1F] dark:text-white">Remaining amount</span>
               <span className="font-medium text-[#FF3B30] dark:text-[#FF453A]">${remainingAmount.toFixed(2)}</span>
             </div>
           )}
-
-          {/* Add another category button */}
           <Button
             type="button"
             variant="outline"
