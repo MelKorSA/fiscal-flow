@@ -4,8 +4,8 @@ import React, { useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Trash2, DollarSign } from "lucide-react";
-import { getExpenseCategoryDetails } from '@/config/expense-categories';
-import { CategorySelect } from './ui/category-select';
+import { getExpenseCategoryDetails, getFlatCategoryOptions } from '@/config/expense-categories';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { gsap } from 'gsap';
 
 export interface SplitItem {
@@ -17,7 +17,6 @@ export interface SplitItem {
 interface SplitExpenseItemProps {
   item: SplitItem;
   index: number;
-  categories: string[];
   totalAmount: number;
   remainingAmount: number;
   onUpdate: (id: string, field: 'category' | 'amount', value: string | number) => void;
@@ -27,7 +26,6 @@ interface SplitExpenseItemProps {
 export function SplitExpenseItem({
   item,
   index,
-  categories,
   totalAmount,
   remainingAmount,
   onUpdate,
@@ -35,11 +33,11 @@ export function SplitExpenseItem({
 }: SplitExpenseItemProps) {
   const { icon: Icon, color } = getExpenseCategoryDetails(item.category);
   const cardRef = useRef<HTMLDivElement>(null);
-  
-  // Calculate the percentage of the total amount
+
+  const categoryOptions = getFlatCategoryOptions();
+
   const percentage = totalAmount > 0 ? Math.round((item.amount / totalAmount) * 100) : 0;
 
-  // Animation for component mount
   useEffect(() => {
     if (cardRef.current) {
       gsap.fromTo(
@@ -63,11 +61,9 @@ export function SplitExpenseItem({
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newAmount = e.target.valueAsNumber || 0;
-    // Ensure the amount doesn't exceed the total available amount
     const maxAllowedAmount = item.amount + remainingAmount;
     const validAmount = Math.min(newAmount, maxAllowedAmount);
     
-    // Animate the input on change
     if (cardRef.current) {
       const amountInput = cardRef.current.querySelector('.amount-input');
       gsap.fromTo(
@@ -80,25 +76,23 @@ export function SplitExpenseItem({
     onUpdate(item.id, 'amount', validAmount);
   };
 
-  const handleCategoryChange = (category: string) => {
-    // Add animation for category change
+  const handleCategoryChange = (categoryValue: string) => {
     if (cardRef.current) {
-      const categoryIcon = cardRef.current.querySelector('.category-icon');
-      if (categoryIcon) {
+      const categoryIconContainer = cardRef.current.querySelector('.category-icon-container');
+      if (categoryIconContainer) {
         gsap.fromTo(
-          categoryIcon,
+          categoryIconContainer,
           { rotate: -15, scale: 0.8 },
           { rotate: 0, scale: 1, duration: 0.3, ease: "elastic.out(1, 0.5)" }
         );
       }
     }
     
-    onUpdate(item.id, 'category', category);
+    onUpdate(item.id, 'category', categoryValue);
   };
 
   const handleRemove = () => {
     if (cardRef.current) {
-      // Animate removal
       gsap.to(cardRef.current, {
         opacity: 0,
         y: -20,
@@ -117,7 +111,7 @@ export function SplitExpenseItem({
       className="bg-white/60 dark:bg-[#3A3A3C]/60 backdrop-blur-md rounded-xl p-4 mb-3 border border-[#F2F2F7] dark:border-[#48484A] hover:shadow-sm transition-all split-expense-item"
     >
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2 category-icon">
+        <div className="flex items-center gap-2 category-icon-container">
           {Icon && (
             <div className={`p-1.5 rounded-full ${color} bg-opacity-15`}>
               <Icon className="h-4 w-4" />
@@ -137,11 +131,25 @@ export function SplitExpenseItem({
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <CategorySelect 
+          <Select 
             value={item.category} 
             onValueChange={handleCategoryChange}
-            placeholder="Select category"
-          />
+          >
+            <SelectTrigger className="rounded-xl bg-white/60 dark:bg-[#3A3A3C]/60 backdrop-blur-md shadow-sm border-[0.5px] border-[#DADADC] dark:border-[#48484A] focus:ring-[#007AFF] dark:focus:ring-[#0A84FF] focus:ring-opacity-30">
+              <SelectValue placeholder="Select category" />
+            </SelectTrigger>
+            <SelectContent className="bg-white/90 dark:bg-[#3A3A3C]/90 backdrop-blur-md rounded-lg border-[#DADADC] dark:border-[#48484A]">
+              {categoryOptions.map((option) => (
+                <SelectItem 
+                  key={option.value} 
+                  value={option.value} 
+                  className="focus:bg-[#F2F2F7] dark:focus:bg-[#48484A] rounded-md"
+                >
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="relative amount-input">
           <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-[#86868B] dark:text-[#A1A1A6] pointer-events-none" />

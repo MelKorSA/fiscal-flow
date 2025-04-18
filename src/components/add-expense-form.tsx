@@ -13,12 +13,12 @@ import { cn } from '@/lib/utils';
 import type { Account } from '@/app/dashboard/page'; 
 import { 
   availableExpenseCategoriesArray, 
-  parseCategoryValue
+  parseCategoryValue,
+  getFlatCategoryOptions
 } from '@/config/expense-categories';
 import { Switch } from './ui/switch';
 import { SplitExpenseItem, SplitItem } from './split-expense-item';
 import { v4 as uuidv4 } from 'uuid';
-import { CategorySelect } from './ui/category-select';
 import { toast } from 'sonner';
 
 interface AddExpenseFormProps {
@@ -52,6 +52,8 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
   const totalAmount = parseFloat(amount) || 0;
   const allocatedAmount = splitItems.reduce((sum, item) => sum + (item.amount || 0), 0);
   const remainingAmount = Math.max(0, totalAmount - allocatedAmount);
+
+  const categoryOptions = getFlatCategoryOptions();
 
   const addSplitItem = () => {
     if (remainingAmount > 0) {
@@ -190,7 +192,6 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
       
       errorMessage += `Please provide ${missingFields.join(', ')}.`;
       toast.error(errorMessage);
-      console.error('Invalid input - ensure account, amount, category, and date are set.');
     }
   };
 
@@ -201,8 +202,6 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
     const totalMatches = Math.abs(totalAllocated - totalAmount) < 0.01;
     return allValid && totalMatches;
   };
-
-  const categoriesList = categories.length ? categories : availableExpenseCategoriesArray;
 
   const applyAiSuggestion = () => {
     if (aiSuggestion) {
@@ -292,25 +291,29 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
       {!isSplitEnabled ? (
         <div className="space-y-2">
           <Label htmlFor="category" className="text-sm font-medium text-[#86868B] dark:text-[#A1A1A6]">Category</Label>
-          <CategorySelect
-            value={category}
-            onValueChange={setCategory}
-            placeholder="Select category"
-          />
+          <Select value={category} onValueChange={setCategory} required>
+            <SelectTrigger 
+              id="category"
+              className="rounded-xl bg-white/60 dark:bg-[#3A3A3C]/60 backdrop-blur-md shadow-sm border-[0.5px] border-[#DADADC] dark:border-[#48484A] focus:ring-[#007AFF] dark:focus:ring-[#0A84FF] focus:ring-opacity-30 dark:focus:ring-opacity-30"
+            >
+              <SelectValue placeholder="Select category" />
+            </SelectTrigger>
+            <SelectContent className="bg-white/90 dark:bg-[#3A3A3C]/90 backdrop-blur-md rounded-lg border-[#DADADC] dark:border-[#48484A]">
+              {categoryOptions.map((option) => (
+                <SelectItem 
+                  key={option.value} 
+                  value={option.value} 
+                  className="focus:bg-[#F2F2F7] dark:focus:bg-[#48484A] rounded-md"
+                >
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {aiSuggestion && aiSuggestion.category !== category && (
-            <div className="mt-1 flex items-center justify-between">
-              <div className="flex items-center gap-1 text-xs text-[#86868B] dark:text-[#A1A1A6]">
-                <Sparkles className="h-3 w-3 text-[#007AFF] dark:text-[#0A84FF]" />
-                <span>AI suggests: <span className="font-medium">{aiSuggestion.category}</span></span>
-              </div>
-              <Button 
-                type="button"
-                variant="ghost"
-                className="h-6 px-2 text-xs text-[#007AFF] dark:text-[#0A84FF] hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                onClick={applyAiSuggestion}
-              >
-                Apply
-              </Button>
+            <div className="mt-1 flex items-center gap-1 text-xs text-[#86868B] dark:text-[#A1A1A6]">
+              <Sparkles className="h-3 w-3 text-[#007AFF] dark:text-[#0A84FF]" />
+              <span>AI suggests: <span className="font-medium">{aiSuggestion.category}</span></span>
             </div>
           )}
           {isCategorizing && description.length >= 3 && !aiSuggestion && (
@@ -342,7 +345,6 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
               key={item.id}
               item={item}
               index={index}
-              categories={categoriesList}
               totalAmount={totalAmount}
               remainingAmount={remainingAmount}
               onUpdate={updateSplitItem}

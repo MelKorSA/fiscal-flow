@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import {
+import { 
     ShoppingCart, Bus, Film, Zap, UtensilsCrossed,
     Shirt, HeartPulse, GraduationCap, Plane, Home,
     Receipt, Coffee, BookOpen, Gift, HelpCircle, 
@@ -172,6 +172,25 @@ export const getCategoriesWithSubcategories = (): Record<MainExpenseCategory, st
     }
     
     return result as Record<MainExpenseCategory, string[]>;
+};
+
+// Function to get a flat list of category options for a simple Select component
+export const getFlatCategoryOptions = (): { value: string; label: string }[] => {
+  const options: { value: string; label: string }[] = [];
+  availableMainCategoriesArray.forEach(mainCategory => {
+    if (mainCategory === 'Split Transaction') return; // Exclude Split Transaction itself
+
+    const mainValue = `main-${mainCategory}`;
+    options.push({ value: mainValue, label: mainCategory });
+
+    const subcategories = getSubcategories(mainCategory);
+    subcategories.forEach(subCategory => {
+      const subValue = `sub-${mainCategory}-${subCategory}`;
+      // Use a slightly indented label for subcategories for clarity
+      options.push({ value: subValue, label: `  ${subCategory}` }); 
+    });
+  });
+  return options;
 };
 
 // For backward compatibility
