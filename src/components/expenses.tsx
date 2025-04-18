@@ -19,7 +19,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { format, isValid, parseISO } from 'date-fns';
 import type { Account } from '@/app/dashboard/page';
-import { Banknote, Landmark, Wallet, ChevronRight } from 'lucide-react';
+import { Banknote, Landmark, Wallet, ChevronRight, Activity } from 'lucide-react';
 import { getExpenseCategoryDetails } from '@/config/expense-categories';
 
 type Expense = {
@@ -72,11 +72,18 @@ export function Expenses({ expenses, accounts }: ExpensesProps) {
   };
 
   return (
-    <Card className="border-0 shadow-sm bg-white/80 dark:bg-[#2C2C2E]/80 backdrop-blur-md flex flex-col h-[500px] rounded-2xl overflow-hidden">
+    <Card className="border-0 shadow-sm bg-white/80 dark:bg-[#2C2C2E]/80 backdrop-blur-md flex flex-col h-[500px] rounded-2xl overflow-hidden hover:shadow-md transition-all duration-200">
       <CardHeader className="pb-2 border-b border-[#F2F2F7] dark:border-[#38383A]">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base font-semibold text-[#1D1D1F] dark:text-white">Recent Expenses</CardTitle>
-          <div className="flex items-center gap-1 text-[#007AFF] dark:text-[#0A84FF] text-sm font-medium">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-[#FCF2F1] dark:bg-[#3A281E] rounded-full">
+              <Activity className="h-4 w-4 text-[#FF3B30] dark:text-[#FF453A]" />
+            </div>
+            <CardTitle className="text-base font-semibold text-[#1D1D1F] dark:text-white">
+              Recent Expenses
+            </CardTitle>
+          </div>
+          <div className="flex items-center gap-1 text-[#007AFF] dark:text-[#0A84FF] text-sm font-medium cursor-pointer hover:underline">
             See All <ChevronRight className="h-4 w-4" />
           </div>
         </div>

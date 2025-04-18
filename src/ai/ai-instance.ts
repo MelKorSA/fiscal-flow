@@ -10,3 +10,6 @@ export const ai = genkit({
   ],
   model: 'googleai/gemini-2.0-flash',
 });
+
+// Export createFlow as a wrapper around ai.defineFlow for easier usage in flows
+export const createFlow = ai.defineFlow;

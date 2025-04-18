@@ -15,8 +15,10 @@ import { Budget } from '@/components/budget';
 import { AIQuery } from '@/components/ai-query';
 import { DashboardHeader } from '@/components/dashboard-header';
 import { SearchResults } from '@/components/search-results/search-results';
+import { RecurringTransactionsList } from '@/components/recurring-transactions-list';
+import { AddRecurringTransactionForm } from '@/components/add-recurring-transaction-form';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle, LayoutGrid, Activity, Banknote, ChevronDown, BarChart3, CreditCard, ArrowUpCircle } from 'lucide-react';
+import { PlusCircle, LayoutGrid, Activity, Banknote, ChevronDown, BarChart3, CreditCard, ArrowUpCircle, Repeat } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { parseISO, isValid, format } from 'date-fns';
 import { toast } from "sonner";
@@ -322,7 +324,7 @@ function DashboardContent() {
               </div>
             </CardHeader>
             <CardContent className="pt-4">
-              <div className="text-2xl font-semibold text-[#1D1D1F] dark:text-white">${totalExpenses.toFixed(2)}</div>
+              <div className="text-2xl font-semibold text-[#1D1D1F] dark:text:white">${totalExpenses.toFixed(2)}</div>
               <p className="text-xs text-[#86868B] dark:text-[#A1A1A6] mt-1.5">Tracked across accounts</p>
             </CardContent>
           </Card>
@@ -335,7 +337,7 @@ function DashboardContent() {
               </div>
             </CardHeader>
             <CardContent className="pt-4">
-              <div className={`text-2xl font-semibold ${currentLiquidBalance >= 0 ? 'text-[#1D1D1F] dark:text-white' : 'text-[#FF3B30] dark:text-[#FF453A]'}`}>
+              <div className={`text-2xl font-semibold ${currentLiquidBalance >= 0 ? 'text-[#1D1D1F] dark:text:white' : 'text-[#FF3B30] dark:text-[#FF453A]'}`}>
                 ${currentLiquidBalance.toFixed(2)}
               </div>
               <p className="text-xs text-[#86868B] dark:text-[#A1A1A6] mt-1.5">Sum of Bank & Cash accounts</p>
@@ -355,7 +357,7 @@ function DashboardContent() {
             
             <Card className="border-0 shadow-sm bg-white/80 dark:bg-[#2C2C2E]/80 backdrop-blur-md rounded-2xl overflow-hidden hover:shadow-md transition-all duration-300">
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-semibold text-[#1D1D1F] dark:text-white flex items-center">
+                <CardTitle className="text-lg font-semibold text-[#1D1D1F] dark:text:white flex items-center">
                   <BarChart3 className="mr-2 h-5 w-5 text-[#007AFF] dark:text-[#0A84FF]" />
                   Add Transaction
                 </CardTitle>
@@ -365,41 +367,81 @@ function DashboardContent() {
               </CardHeader>
               <CardContent className="pt-2">
                 <Tabs defaultValue="expense" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 p-1 mb-3 bg-[#F2F2F7] dark:bg-[#38383A] rounded-full">
+                  <TabsList className="grid w-full grid-cols-3 p-1 mb-3 bg-[#F2F2F7] dark:bg-[#38383A] rounded-full">
                     <TabsTrigger 
                       value="expense" 
-                      className="rounded-full data-[state=active]:bg-white dark:data-[state=active]:bg-[#48484A] data-[state=active]:shadow-sm text-[#86868B] dark:text-[#A1A1A6] data-[state=active]:text-[#1D1D1F] dark:data-[state=active]:text-white transition-all"
+                      className="rounded-full data-[state=active]:bg:white dark:data-[state=active]:bg-[#48484A] data-[state=active]:shadow-sm text-[#86868B] dark:text-[#A1A1A6] data-[state=active]:text-[#1D1D1F] dark:data-[state=active]:text:white transition-all"
                     >
-                      <PlusCircle className="mr-1.5 h-4 w-4"/>Expense
+                      Expense
                     </TabsTrigger>
                     <TabsTrigger 
-                      value="income" 
-                      className="rounded-full data-[state=active]:bg-white dark:data-[state=active]:bg-[#48484A] data-[state=active]:shadow-sm text-[#86868B] dark:text-[#A1A1A6] data-[state=active]:text-[#1D1D1F] dark:data-[state=active]:text-white transition-all"
+                      value="income"
+                      className="rounded-full data-[state=active]:bg:white dark:data-[state=active]:bg-[#48484A] data-[state=active]:shadow-sm text-[#86868B] dark:text-[#A1A1A6] data-[state=active]:text-[#1D1D1F] dark:data-[state=active]:text:white transition-all"
                     >
-                      <PlusCircle className="mr-1.5 h-4 w-4"/>Income
+                      Income
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="recurring"
+                      className="rounded-full data-[state=active]:bg:white dark:data-[state=active]:bg-[#48484A] data-[state=active]:shadow-sm text-[#86868B] dark:text-[#A1A1A6] data-[state=active]:text-[#1D1D1F] dark:data-[state=active]:text:white transition-all"
+                    >
+                      Recurring
                     </TabsTrigger>
                   </TabsList>
-                  <TabsContent value="expense" className="mt-4 space-y-4">
+                  <TabsContent value="expense" className="space-y-4 mt-0">
                     <AddExpenseForm 
-                      accounts={nonFdAccounts} 
+                      accounts={accounts} 
+                      categories={availableExpenseCategoriesArray}
                       onAddExpense={handleAddExpense} 
-                      categories={availableExpenseCategoriesArray} 
                     />
                   </TabsContent>
-                  <TabsContent value="income" className="mt-4 space-y-4">
+                  <TabsContent value="income" className="space-y-4 mt-0">
                     <AddIncomeForm 
                       accounts={nonFdAccounts} 
-                      onAddIncome={handleAddIncome} 
                       incomeSources={availableIncomeSources} 
+                      onAddIncome={handleAddIncome}
+                    />
+                  </TabsContent>
+                  <TabsContent value="recurring" className="space-y-4 mt-0">
+                    <AddRecurringTransactionForm 
+                      accounts={nonFdAccounts} 
+                      categories={availableExpenseCategoriesArray}
+                      incomeSources={availableIncomeSources}
+                      onAddRecurringTransaction={() => {}}
                     />
                   </TabsContent>
                 </Tabs>
               </CardContent>
             </Card>
+            
+            <FixedDepositList accounts={fdAccounts} />
           </div>
 
-          {/* --- Column 2 & 3: Data Display & Insights --- */} 
-          <div ref={columnTwoRef} className="lg:col-span-2 space-y-6">
+          {/* --- Column 2: Expenses & Income --- */}
+          <div ref={columnTwoRef} className="lg:col-span-1 space-y-6">
+            <Expenses expenses={expenses} accounts={accounts} />
+            <IncomeDisplay totalIncome={totalIncome} />
+            
+            <Card className="border-0 shadow-sm bg-white/80 dark:bg-[#2C2C2E]/80 backdrop-blur-md rounded-2xl overflow-hidden hover:shadow-md transition-all duration-300">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-semibold text-[#1D1D1F] dark:text:white flex items-center">
+                  <Repeat className="mr-2 h-5 w-5 text-[#007AFF] dark:text-[#0A84FF]" />
+                  Recurring Transactions
+                </CardTitle>
+                <CardDescription className="text-[#86868B] dark:text-[#A1A1A6] text-sm">
+                  Manage your recurring expenses and income
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <RecurringTransactionsList 
+                  recurringTransactions={[]} 
+                  onUpdateStatus={() => {}}
+                />
+              </CardContent>
+            </Card>
+          </div>
+          
+          {/* --- Column 3: Budgets & AI Insights --- */}
+          <div className="lg:col-span-1 space-y-6">
             <AIQuery onQuerySubmit={handleAIQuery}/> 
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6"> 
@@ -410,6 +452,12 @@ function DashboardContent() {
               </div>
               <div className="md:col-span-2">
                 <AISpendingInsights expenses={expenses} income={income} />
+              </div>
+              <div className="md:col-span-2">
+                <RecurringTransactionsList 
+                  recurringTransactions={[]}
+                  onUpdateStatus={() => {}}
+                />
               </div>
             </div>
           </div>
