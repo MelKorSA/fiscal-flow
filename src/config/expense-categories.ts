@@ -4,13 +4,15 @@ import React from 'react';
 import {
     ShoppingCart, Bus, Film, Zap, UtensilsCrossed,
     Shirt, HeartPulse, GraduationCap, Plane, Home,
-    Receipt, Coffee, BookOpen, Gift, HelpCircle // Add more as needed
+    Receipt, Coffee, BookOpen, Gift, HelpCircle, 
+    Scissors // Add Scissors icon for Split Transaction
 } from 'lucide-react';
 
 export type ExpenseCategory = 
     | "Groceries" | "Transport" | "Entertainment" | "Utilities" | "Dining Out"
     | "Shopping" | "Healthcare" | "Education" | "Travel" | "Rent/Mortgage"
-    | "Subscriptions" | "Coffee" | "Books" | "Gifts" | "Other";
+    | "Subscriptions" | "Coffee" | "Books" | "Gifts" | "Other"
+    | "Split Transaction"; // New category for split transactions
 
 // Map categories to icons and colors (tailwind classes)
 const categoryConfig: Record<ExpenseCategory, { icon: React.ElementType, color: string }> = {
@@ -29,6 +31,7 @@ const categoryConfig: Record<ExpenseCategory, { icon: React.ElementType, color: 
     "Books": { icon: BookOpen, color: "text-sky-600" },
     "Gifts": { icon: Gift, color: "text-rose-500" },
     "Other": { icon: HelpCircle, color: "text-slate-500" },
+    "Split Transaction": { icon: Scissors, color: "text-blue-500" }, // Adding Split Transaction with Scissors icon
 };
 
 export const getExpenseCategoryDetails = (category: string | ExpenseCategory) => {

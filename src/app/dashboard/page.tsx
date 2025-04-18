@@ -195,23 +195,57 @@ function DashboardContent() {
     } catch (error) { console.error("Error adding account:", error); toast.error("Failed to add account."); }
   };
 
-  const handleAddExpense = (data: { accountId: string; amount: number; category: string; date: Date; description: string }) => {
-    try {
-      let dateToAdd = data.date;
-      if (data.date && !(data.date instanceof Date)) {
+  const handleAddExpense = (data: { 
+    accountId: string; 
+    amount: number; 
+    category: string; 
+    date: Date; 
+    description: string;
+    splitItems?: Array<{id: string; category: string; amount: number}>; 
+  }) => {
+     try {
+       let dateToAdd = data.date;
+        if (data.date && !(data.date instanceof Date)) {
            const parsed = parseISO(data.date as any as string);
            if (isValid(parsed)) dateToAdd = parsed; 
            else { toast.error("Invalid expense date."); return; }
-      }
-      const newExpense: Expense = { ...data, id: `exp_${Date.now()}`, date: dateToAdd };
-      setExpenses(prev => [...prev, newExpense]);
-      setAccounts(prevAccounts => prevAccounts.map(acc => { 
-        if (acc.id === data.accountId && acc.type !== 'Fixed Deposit' && acc.balance !== undefined) { 
-          return { ...acc, balance: acc.balance - data.amount }; 
-        } 
-        return acc; 
-      }));
-      toast.success(`Expense of $${data.amount.toFixed(2)} added.`);
+        }
+
+        if (data.splitItems && data.splitItems.length > 0) {
+          // Handle split transaction: create multiple expense entries
+          const splitTransactions = data.splitItems.map(splitItem => ({
+            id: `exp_${Date.now()}_${splitItem.id}`,
+            accountId: data.accountId,
+            amount: splitItem.amount,
+            category: splitItem.category,
+            date: dateToAdd,
+            description: `${data.description || 'Split transaction'} (${splitItem.category})`,
+          }));
+
+          // Add all split transactions to expenses
+          setExpenses(prev => [...prev, ...splitTransactions]);
+          
+          // Only deduct the total amount once from the account
+          setAccounts(prevAccounts => prevAccounts.map(acc => { 
+            if (acc.id === data.accountId && acc.type !== 'Fixed Deposit' && acc.balance !== undefined) { 
+              return { ...acc, balance: acc.balance - data.amount }; 
+            } 
+            return acc; 
+          }));
+          
+          toast.success(`Split expense of $${data.amount.toFixed(2)} added across ${splitTransactions.length} categories.`);
+        } else {
+          // Handle regular expense
+          const newExpense: Expense = { ...data, id: `exp_${Date.now()}`, date: dateToAdd };
+          setExpenses(prev => [...prev, newExpense]);
+          setAccounts(prevAccounts => prevAccounts.map(acc => { 
+            if (acc.id === data.accountId && acc.type !== 'Fixed Deposit' && acc.balance !== undefined) { 
+              return { ...acc, balance: acc.balance - data.amount }; 
+            } 
+            return acc; 
+          }));
+          toast.success(`Expense of $${data.amount.toFixed(2)} added.`);
+        }
      } catch (error) { console.error("Error adding expense:", error); toast.error("Failed to add expense."); }
   };
 
@@ -356,7 +390,7 @@ function DashboardContent() {
             
             <Card className="border-0 shadow-sm bg-white/80 dark:bg-[#2C2C2E]/80 backdrop-blur-md rounded-2xl overflow-hidden hover:shadow-md transition-all duration-300">
               <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-semibold text-[#1D1D1F] dark:text-white flex items-center">
+                <CardTitle className="text-lg font-semibold text-[#1D1D1F] dark:text:white flex items-center">
                   <BarChart3 className="mr-2 h-5 w-5 text-[#007AFF] dark:text-[#0A84FF]" />
                   Add Transaction
                 </CardTitle>
@@ -426,7 +460,7 @@ function DashboardContent() {
             {/* Recurring Transactions */}
             <Card className="border-0 shadow-sm bg-white/80 dark:bg-[#2C2C2E]/80 backdrop-blur-md rounded-2xl overflow-hidden hover:shadow-md transition-all duration-300">
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-semibold text-[#1D1D1F] dark:text-white flex items-center">
+                <CardTitle className="text-lg font-semibold text-[#1D1D1F] dark:text:white flex items-center">
                   <Repeat className="mr-2 h-5 w-5 text-[#007AFF] dark:text-[#0A84FF]" />
                   Recurring Transactions
                 </CardTitle>

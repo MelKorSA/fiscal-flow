@@ -58,6 +58,13 @@ const getAccountInfo = (accountId: string, accounts: Account[]) => {
 export function Expenses({ expenses, accounts }: ExpensesProps) {
   const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
 
+  // Group expenses by date (newest first) for potential future enhancement
+  const sortedExpenses = [...expenses].sort((a, b) => {
+    const dateA = a.date instanceof Date ? a.date : parseISO(a.date as string);
+    const dateB = b.date instanceof Date ? b.date : parseISO(b.date as string);
+    return dateB.getTime() - dateA.getTime();
+  });
+
   const formatDate = (dateInput: Date | string): string => {
     let dateObj: Date | null = null;
     if (dateInput instanceof Date && isValid(dateInput)) {
@@ -94,11 +101,14 @@ export function Expenses({ expenses, accounts }: ExpensesProps) {
       <CardContent className="flex-grow overflow-hidden pt-0 px-0">
         <ScrollArea className="h-full">
           <div className="px-4">
-            {expenses.length > 0 ? (
+            {sortedExpenses.length > 0 ? (
               <ul className="divide-y divide-[#F2F2F7] dark:divide-[#38383A]">
-                {expenses.map((expense) => {
+                {sortedExpenses.map((expense) => {
                   const { name: accountName, icon: accountIcon } = getAccountInfo(expense.accountId, accounts);
                   const { icon: CategoryIcon, color } = getExpenseCategoryDetails(expense.category);
+                  const isSplitTransaction = expense.category === 'Split Transaction' || 
+                                            expense.description?.includes('(Split transaction)') || 
+                                            expense.description?.includes('Split transaction');
                   
                   return (
                     <li key={expense.id} className="py-3 flex items-center justify-between group transition-all hover:bg-[#F2F2F7] dark:hover:bg-[#38383A]/50 rounded-lg px-2 my-0.5">
@@ -107,7 +117,14 @@ export function Expenses({ expenses, accounts }: ExpensesProps) {
                           <CategoryIcon className={`h-5 w-5 ${color}`} />
                         </div>
                         <div>
-                          <p className="font-medium text-sm text-[#1D1D1F] dark:text-white">{expense.category}</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-medium text-sm text-[#1D1D1F] dark:text-white">{expense.category}</p>
+                            {isSplitTransaction && (
+                              <Badge variant="outline" className="h-5 px-1.5 py-0 text-[10px] rounded-full bg-[#EDF4FE] dark:bg-[#1C3049] text-[#007AFF] dark:text-[#0A84FF] border-[#D1E5FE] dark:border-[#0A84FF]/30">
+                                Split
+                              </Badge>
+                            )}
+                          </div>
                           <div className="flex items-center gap-1 text-xs text-[#8E8E93] dark:text-[#98989D]">
                             {accountIcon}
                             <span>{accountName}</span>

@@ -7,16 +7,26 @@ import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { Calendar as CalendarIcon, DollarSign, Sparkles } from 'lucide-react';
+import { Calendar as CalendarIcon, DollarSign, Sparkles, Scissors, MoreHorizontal, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { Account } from '@/app/dashboard/page'; 
 import { availableExpenseCategoriesArray, getExpenseCategoryDetails } from '@/config/expense-categories';
 import { Badge } from './ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import { Switch } from './ui/switch';
+import { SplitExpenseItem, SplitItem } from './split-expense-item';
+import { v4 as uuidv4 } from 'uuid';
 
 interface AddExpenseFormProps {
-  onAddExpense: (expense: { accountId: string; amount: number; category: string; date: Date; description: string }) => void;
+  onAddExpense: (expense: { 
+    accountId: string; 
+    amount: number; 
+    category: string; 
+    date: Date; 
+    description: string;
+    splitItems?: SplitItem[];
+  }) => void;
   categories: string[];
   accounts: Account[];
   previousTransactions?: Array<{description: string; category: string; amount?: number}>;
@@ -31,6 +41,66 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [aiSuggestion, setAiSuggestion] = useState<{ category: string; confidence: number } | null>(null);
   const [isCategorizing, setIsCategorizing] = useState(false);
+  
+  // Split transaction states
+  const [isSplitEnabled, setIsSplitEnabled] = useState(false);
+  const [splitItems, setSplitItems] = useState<SplitItem[]>([]);
+  
+  // Calculate the remaining amount to be allocated
+  const totalAmount = parseFloat(amount) || 0;
+  const allocatedAmount = splitItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+  const remainingAmount = Math.max(0, totalAmount - allocatedAmount);
+
+  // Add a new split item
+  const addSplitItem = () => {
+    // Only allow adding split items if there's remaining amount to allocate
+    if (remainingAmount > 0) {
+      const newItem: SplitItem = {
+        id: uuidv4(),
+        category: '',
+        amount: remainingAmount
+      };
+      setSplitItems([...splitItems, newItem]);
+    }
+  };
+
+  // Remove a split item
+  const removeSplitItem = (id: string) => {
+    setSplitItems(splitItems.filter(item => item.id !== id));
+  };
+
+  // Update a split item
+  const updateSplitItem = (id: string, field: 'category' | 'amount', value: string | number) => {
+    setSplitItems(splitItems.map(item => {
+      if (item.id === id) {
+        return { ...item, [field]: value };
+      }
+      return item;
+    }));
+  };
+
+  // Reset split items when total amount changes or splitting is disabled
+  useEffect(() => {
+    if (isSplitEnabled) {
+      // If there are no split items, add the first one with the full amount
+      if (splitItems.length === 0 && totalAmount > 0) {
+        setSplitItems([{
+          id: uuidv4(),
+          category: category || '',
+          amount: totalAmount
+        }]);
+      }
+    } else {
+      setSplitItems([]);
+    }
+  }, [isSplitEnabled, totalAmount]);
+
+  // Update first split item's category when main category changes
+  useEffect(() => {
+    if (isSplitEnabled && splitItems.length > 0 && category) {
+      updateSplitItem(splitItems[0].id, 'category', category);
+    }
+  }, [category]);
 
   // Categorize transaction when description changes
   useEffect(() => {
@@ -95,10 +165,25 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const numericAmount = parseFloat(amount);
-    if (!isNaN(numericAmount) && category && date && accountId) {
+    if (!isNaN(numericAmount) && (isSplitEnabled ? allSplitItemsValid() : category) && date && accountId) {
       setIsSubmitting(true);
       try {
-        onAddExpense({ accountId, amount: numericAmount, category, date, description });
+        if (isSplitEnabled && splitItems.length > 0) {
+          // For split transactions, we'll create a main expense with the total amount,
+          // and include the split items information
+          onAddExpense({ 
+            accountId, 
+            amount: numericAmount, 
+            category: 'Split Transaction', // Use a special category for the main transaction
+            date, 
+            description,
+            splitItems // Include the split items
+          });
+        } else {
+          // Regular single-category expense
+          onAddExpense({ accountId, amount: numericAmount, category, date, description });
+        }
+        
         // Reset form
         setAccountId('');
         setAmount('');
@@ -106,12 +191,28 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
         setDate(new Date());
         setDescription('');
         setAiSuggestion(null);
+        setIsSplitEnabled(false);
+        setSplitItems([]);
       } finally {
         setIsSubmitting(false);
       }
     } else {
       console.error('Invalid input - ensure account, amount, category, and date are set.');
     }
+  };
+
+  // Validate all split items have a category and amount
+  const allSplitItemsValid = () => {
+    if (splitItems.length === 0) return false;
+    
+    // All split items should have a category and amount > 0
+    const allValid = splitItems.every(item => item.category && item.amount > 0);
+    
+    // Total allocated amount should match the total expense amount
+    const totalAllocated = splitItems.reduce((sum, item) => sum + item.amount, 0);
+    const totalMatches = Math.abs(totalAllocated - totalAmount) < 0.01; // Allow for small floating point differences
+    
+    return allValid && totalMatches;
   };
 
   // Use the actual expense categories array if the provided categories are empty
@@ -122,6 +223,28 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
     if (aiSuggestion) {
       setCategory(aiSuggestion.category);
     }
+  };
+
+  // Allocate remaining amount to split items
+  const distributeRemainingAmount = () => {
+    if (splitItems.length === 0 || remainingAmount <= 0) return;
+    
+    const amountPerItem = remainingAmount / splitItems.length;
+    setSplitItems(splitItems.map(item => ({
+      ...item,
+      amount: item.amount + amountPerItem
+    })));
+  };
+
+  // Evenly distribute the total amount among all split items
+  const distributeEvenly = () => {
+    if (splitItems.length === 0 || totalAmount <= 0) return;
+    
+    const amountPerItem = totalAmount / splitItems.length;
+    setSplitItems(splitItems.map(item => ({
+      ...item,
+      amount: amountPerItem
+    })));
   };
 
   return (
@@ -176,87 +299,161 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="category" className="text-sm font-medium text-[#86868B] dark:text-[#A1A1A6]">Category</Label>
-        <Select value={category} onValueChange={setCategory} required>
-          <SelectTrigger 
-            id="category" 
-            className="rounded-xl bg-white/60 dark:bg-[#3A3A3C]/60 backdrop-blur-md shadow-sm border-[0.5px] border-[#DADADC] dark:border-[#48484A] focus:ring-[#007AFF] dark:focus:ring-[#0A84FF] focus:ring-opacity-30"
-          >
-            <SelectValue placeholder="Select category" />
-          </SelectTrigger>
-          <SelectContent className="bg-white/90 dark:bg-[#3A3A3C]/90 backdrop-blur-md rounded-lg max-h-[300px]">
-            <div className="grid grid-cols-1 gap-1 p-1 max-h-[300px] overflow-y-auto">
-              {categoriesList.map((cat) => {
-                const { icon: Icon, color } = getExpenseCategoryDetails(cat);
-                // Highlight the AI-suggested category
-                const isAiSuggested = aiSuggestion?.category === cat;
-                
-                return (
-                  <SelectItem 
-                    key={cat} 
-                    value={cat}
-                    className={cn(
-                      "focus:bg-[#F2F2F7] dark:focus:bg-[#48484A] rounded-md",
-                      isAiSuggested && "relative bg-[#F2F2F7] dark:bg-[#38383A]"
-                    )}
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="p-1 rounded-full bg-opacity-20" style={{ backgroundColor: `var(--${color.replace('text-', '')}-100)` }}>
-                        <Icon className={`h-4 w-4 ${color}`} />
-                      </div>
-                      <span className="text-[#1D1D1F] dark:text-white">{cat}</span>
-                      {isAiSuggested && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Badge variant="outline" className="ml-1 gap-1 bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800 text-[#007AFF] dark:text-[#0A84FF]">
-                                <Sparkles className="h-3 w-3" />
-                                <span className="text-xs">
-                                  {Math.round(aiSuggestion.confidence * 100)}%
-                                </span>
-                              </Badge>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>AI suggested with {Math.round(aiSuggestion.confidence * 100)}% confidence</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
-                    </div>
-                  </SelectItem>
-                );
-              })}
-            </div>
-          </SelectContent>
-        </Select>
-        
-        {/* Show the AI suggestion button if available and not already selected */}
-        {aiSuggestion && aiSuggestion.category !== category && (
-          <div className="mt-1 flex items-center justify-between">
-            <div className="flex items-center gap-1 text-xs text-[#86868B] dark:text-[#A1A1A6]">
-              <Sparkles className="h-3 w-3 text-[#007AFF] dark:text-[#0A84FF]" />
-              <span>AI suggests: <span className="font-medium">{aiSuggestion.category}</span></span>
-            </div>
-            <Button 
-              type="button"
-              variant="ghost"
-              className="h-6 px-2 text-xs text-[#007AFF] dark:text-[#0A84FF] hover:bg-blue-50 dark:hover:bg-blue-900/20"
-              onClick={applyAiSuggestion}
-            >
-              Apply
-            </Button>
+      {/* Split Transaction Toggle */}
+      <div className="flex items-center justify-between bg-[#F9F9FA] dark:bg-[#38383A] p-3 rounded-xl">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-[#EDF4FE] dark:bg-[#1C3049] rounded-full">
+            <Scissors className="h-4 w-4 text-[#007AFF] dark:text-[#0A84FF]" />
           </div>
-        )}
-        
-        {/* Show categorizing indicator */}
-        {isCategorizing && description.length >= 3 && !aiSuggestion && (
-          <div className="flex items-center gap-2 text-xs text-[#86868B] dark:text-[#A1A1A6] mt-1">
-            <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
-            <span>Categorizing...</span>
+          <div>
+            <p className="text-sm font-medium text-[#1D1D1F] dark:text-white">Split Transaction</p>
+            <p className="text-xs text-[#8E8E93] dark:text-[#98989D]">Divide across categories</p>
           </div>
-        )}
+        </div>
+        <Switch 
+          checked={isSplitEnabled} 
+          onCheckedChange={setIsSplitEnabled} 
+          disabled={!totalAmount}
+        />
       </div>
+
+      {!isSplitEnabled ? (
+        // Single category selection when split is disabled
+        <div className="space-y-2">
+          <Label htmlFor="category" className="text-sm font-medium text-[#86868B] dark:text-[#A1A1A6]">Category</Label>
+          <Select value={category} onValueChange={setCategory} required>
+            <SelectTrigger 
+              id="category" 
+              className="rounded-xl bg-white/60 dark:bg-[#3A3A3C]/60 backdrop-blur-md shadow-sm border-[0.5px] border-[#DADADC] dark:border-[#48484A] focus:ring-[#007AFF] dark:focus:ring-[#0A84FF] focus:ring-opacity-30"
+            >
+              <SelectValue placeholder="Select category" />
+            </SelectTrigger>
+            <SelectContent className="bg-white/90 dark:bg-[#3A3A3C]/90 backdrop-blur-md rounded-lg max-h-[300px]">
+              <div className="grid grid-cols-1 gap-1 p-1 max-h-[300px] overflow-y-auto">
+                {categoriesList.map((cat) => {
+                  const { icon: Icon, color } = getExpenseCategoryDetails(cat);
+                  // Highlight the AI-suggested category
+                  const isAiSuggested = aiSuggestion?.category === cat;
+                  
+                  return (
+                    <SelectItem 
+                      key={cat} 
+                      value={cat}
+                      className={cn(
+                        "focus:bg-[#F2F2F7] dark:focus:bg-[#48484A] rounded-md",
+                        isAiSuggested && "relative bg-[#F2F2F7] dark:bg-[#38383A]"
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="p-1 rounded-full bg-opacity-20" style={{ backgroundColor: `var(--${color.replace('text-', '')}-100)` }}>
+                          <Icon className={`h-4 w-4 ${color}`} />
+                        </div>
+                        <span className="text-[#1D1D1F] dark:text-white">{cat}</span>
+                        {isAiSuggested && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge variant="outline" className="ml-1 gap-1 bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800 text-[#007AFF] dark:text-[#0A84FF]">
+                                  <Sparkles className="h-3 w-3" />
+                                  <span className="text-xs">
+                                    {Math.round(aiSuggestion.confidence * 100)}%
+                                  </span>
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>AI suggested with {Math.round(aiSuggestion.confidence * 100)}% confidence</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </div>
+                    </SelectItem>
+                  );
+                })}
+              </div>
+            </SelectContent>
+          </Select>
+          
+          {/* Show the AI suggestion button if available and not already selected */}
+          {aiSuggestion && aiSuggestion.category !== category && (
+            <div className="mt-1 flex items-center justify-between">
+              <div className="flex items-center gap-1 text-xs text-[#86868B] dark:text-[#A1A1A6]">
+                <Sparkles className="h-3 w-3 text-[#007AFF] dark:text-[#0A84FF]" />
+                <span>AI suggests: <span className="font-medium">{aiSuggestion.category}</span></span>
+              </div>
+              <Button 
+                type="button"
+                variant="ghost"
+                className="h-6 px-2 text-xs text-[#007AFF] dark:text-[#0A84FF] hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                onClick={applyAiSuggestion}
+              >
+                Apply
+              </Button>
+            </div>
+          )}
+          
+          {/* Show categorizing indicator */}
+          {isCategorizing && description.length >= 3 && !aiSuggestion && (
+            <div className="flex items-center gap-2 text-xs text-[#86868B] dark:text-[#A1A1A6] mt-1">
+              <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+              <span>Categorizing...</span>
+            </div>
+          )}
+        </div>
+      ) : (
+        // Split transaction UI when split is enabled
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-medium text-[#86868B] dark:text-[#A1A1A6]">Split Categories</Label>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-xs px-2 py-1 h-7 rounded-lg bg-[#F2F2F7] dark:bg-[#38383A] hover:bg-[#E5E5EA] dark:hover:bg-[#48484A] text-[#007AFF] dark:text-[#0A84FF]"
+                onClick={distributeEvenly}
+                disabled={splitItems.length <= 1 || totalAmount <= 0}
+              >
+                Distribute Evenly
+              </Button>
+            </div>
+          </div>
+
+          {/* Display split items */}
+          {splitItems.map((item, index) => (
+            <SplitExpenseItem
+              key={item.id}
+              item={item}
+              index={index}
+              categories={categoriesList}
+              totalAmount={totalAmount}
+              remainingAmount={remainingAmount}
+              onUpdate={updateSplitItem}
+              onRemove={removeSplitItem}
+            />
+          ))}
+          
+          {/* Show remaining amount if not fully allocated */}
+          {remainingAmount > 0 && (
+            <div className="flex items-center justify-between py-2 px-4 bg-[#F2F2F7] dark:bg-[#38383A] rounded-xl">
+              <span className="text-sm text-[#1D1D1F] dark:text-white">Remaining amount</span>
+              <span className="font-medium text-[#FF3B30] dark:text-[#FF453A]">${remainingAmount.toFixed(2)}</span>
+            </div>
+          )}
+
+          {/* Add another category button */}
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-white/60 dark:bg-[#3A3A3C]/60 border-dashed border-[#DADADC] dark:border-[#48484A] hover:bg-[#F2F2F7] dark:hover:bg-[#38383A] transition-colors"
+            onClick={addSplitItem}
+            disabled={remainingAmount <= 0}
+          >
+            <Plus className="h-4 w-4 text-[#007AFF] dark:text-[#0A84FF]" />
+            <span className="text-sm font-medium text-[#007AFF] dark:text-[#0A84FF]">Add Category</span>
+          </Button>
+        </div>
+      )}
 
       <div className="space-y-2">
         <Label htmlFor="date" className="text-sm font-medium text-[#86868B] dark:text-[#A1A1A6]">Date</Label>
@@ -301,7 +498,7 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
       <Button 
         type="submit" 
         className="w-full bg-[#007AFF] hover:bg-[#0071E3] dark:bg-[#0A84FF] dark:hover:bg-[#0A7AEF] rounded-xl py-6 text-white font-medium shadow-sm transition-all hover:-translate-y-[1px] hover:shadow-md disabled:opacity-70 disabled:cursor-not-allowed"
-        disabled={isSubmitting}
+        disabled={isSubmitting || (isSplitEnabled && !allSplitItemsValid())}
       >
         {isSubmitting ? (
           <div className="flex items-center justify-center gap-2">
