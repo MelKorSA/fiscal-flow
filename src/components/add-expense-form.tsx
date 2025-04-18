@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -19,7 +19,8 @@ import {
   isMainCategory,
   getParentCategory,
   formatCategoryDisplay,
-  MainExpenseCategory
+  MainExpenseCategory,
+  parseCategoryValue
 } from '@/config/expense-categories';
 import { Badge } from './ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
@@ -43,9 +44,10 @@ interface AddExpenseFormProps {
 }
 
 export function AddExpenseForm({ onAddExpense, categories, accounts, previousTransactions = [] }: AddExpenseFormProps) {
+  const formRef = useRef<HTMLFormElement>(null);
   const [accountId, setAccountId] = useState<string>('');
   const [amount, setAmount] = useState<string>('');
-  const [category, setCategory] = useState<string>('');
+  const [category, setCategory] = useState<string>(''); // Category state now holds the prefixed value
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [description, setDescription] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -108,6 +110,7 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
   // Update first split item's category when main category changes
   useEffect(() => {
     if (isSplitEnabled && splitItems.length > 0 && category) {
+      // No need to parse here, split item category select will handle its own prefixed value
       updateSplitItem(splitItems[0].id, 'category', category);
     }
   }, [category]);
@@ -178,31 +181,29 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
     if (!isNaN(numericAmount) && (isSplitEnabled ? allSplitItemsValid() : category) && date && accountId) {
       setIsSubmitting(true);
       try {
-        if (isSplitEnabled && splitItems.length > 0) {
-          // For split transactions, we'll create a main expense with the total amount,
-          // and include the split items information
-          onAddExpense({ 
-            accountId, 
-            amount: numericAmount, 
-            category: 'Split Transaction', // Use a special category for the main transaction
-            date, 
-            description,
-            splitItems // Include the split items
-          });
-        } else {
-          // Regular single-category expense
-          onAddExpense({ accountId, amount: numericAmount, category, date, description });
-        }
-        
+        const expenseData = {
+          accountId,
+          amount: numericAmount,
+          // Parse the category value before sending it
+          category: isSplitEnabled ? 'Split Transaction' : parseCategoryValue(category),
+          date,
+          description,
+          // Parse split item category values as well
+          splitItems: isSplitEnabled 
+            ? splitItems.map(item => ({ ...item, category: parseCategoryValue(item.category) })) 
+            : undefined,
+        };
+        await onAddExpense(expenseData);
         // Reset form
+        formRef.current?.reset();
         setAccountId('');
         setAmount('');
         setCategory('');
         setDate(new Date());
         setDescription('');
-        setAiSuggestion(null);
         setIsSplitEnabled(false);
         setSplitItems([]);
+        setAiSuggestion(null);
       } finally {
         setIsSubmitting(false);
       }
@@ -258,7 +259,7 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
       <div className="space-y-2">
         <Label htmlFor="expense-account" className="text-sm font-medium text-[#86868B] dark:text-[#A1A1A6]">
           Account
@@ -300,6 +301,7 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
             type="number"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
+            onBlur={() => formRef.current?.requestSubmit()}
             placeholder="0.00"
             className="pl-9 rounded-xl bg-white/60 dark:bg-[#3A3A3C]/60 backdrop-blur-md shadow-sm border-[0.5px] border-[#DADADC] dark:border-[#48484A] focus-visible:ring-[#007AFF] dark:focus-visible:ring-[#0A84FF] focus-visible:ring-opacity-30"
             required
@@ -321,6 +323,7 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
           </div>
         </div>
         <Switch 
+          id="split-toggle"
           checked={isSplitEnabled} 
           onCheckedChange={setIsSplitEnabled} 
           disabled={!totalAmount}

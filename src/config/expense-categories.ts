@@ -189,3 +189,19 @@ export const formatCategoryDisplay = (category: string): { display: string, isSu
     return { display: category, isSubcategory: false };
 };
 
+// Function to parse the prefixed value (e.g., "main-Books", "sub-Transport-Gas") back to the original category name
+export const parseCategoryValue = (value: string): string => {
+  if (value.startsWith('main-')) {
+    return value.substring(5); // Remove 'main-'
+  }
+  if (value.startsWith('sub-')) {
+    // Find the last hyphen, the part after it is the subcategory name
+    const lastHyphenIndex = value.lastIndexOf('-');
+    if (lastHyphenIndex > 3) { // Ensure it's not the hyphen after 'sub'
+      return value.substring(lastHyphenIndex + 1);
+    }
+  }
+  // If no prefix or invalid format, return the value as is (fallback)
+  return value;
+};
+

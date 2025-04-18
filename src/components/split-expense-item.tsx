@@ -50,7 +50,7 @@ export function SplitExpenseItem({
   const percentage = totalAmount > 0 ? Math.round((item.amount / totalAmount) * 100) : 0;
 
   return (
-    <div className="bg-white/60 dark:bg-[#3A3A3C]/60 backdrop-blur-md rounded-xl p-4 mb-3 border border-[#F2F2F7] dark:border-[#48484A] hover:shadow-sm transition-all">
+    <div className="bg-white/60 dark:bg-[#3A3A3C]/60 backdrop-blur-md rounded-xl p-4 mb-3 border border-[#F2F2F7] dark:border-[#48484A] hover:shadow-sm transition-all split-expense-item">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <div className="p-1 rounded-full bg-opacity-20" style={{ backgroundColor: `var(--${color.replace('text-', '')}-100)` }}>
@@ -72,10 +72,9 @@ export function SplitExpenseItem({
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          {/* Using our new CategorySelect component */}
           <CategorySelect 
             value={item.category} 
-            onValueChange={handleCategoryChange} 
+            onValueChange={handleCategoryChange}
             placeholder="Select category"
           />
         </div>
