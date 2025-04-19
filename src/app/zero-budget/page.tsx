@@ -13,7 +13,7 @@ import {
   DraggableProvided 
 } from '@hello-pangea/dnd';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
-import { Target, Trash2, DollarSign, Plus, PiggyBank, Info } from 'lucide-react';
+import { Target, Trash2, DollarSign, Plus, PiggyBank, Info, FileText, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,6 +25,23 @@ import {
   getExpenseCategoryDetails,
   MainExpenseCategory
 } from '@/config/expense-categories';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle 
+} from "@/components/ui/alert-dialog";
 
 // Local storage keys
 const LS_KEYS = {
@@ -42,6 +59,70 @@ interface BudgetAllocation {
   color: string;
 }
 
+// Define the structure for a single template allocation
+interface TemplateAllocation {
+  category: string;
+  percentage: number;
+}
+
+// Define the structure for a single budget template
+interface BudgetTemplate {
+  name: string;
+  description: string;
+  allocations: TemplateAllocation[];
+}
+
+// Define the type for the keys of budgetTemplates
+type BudgetTemplateKey = keyof typeof budgetTemplates;
+
+// Budget Templates Definition
+const budgetTemplates = {
+  '50/30/20': {
+    name: '50/30/20 Rule',
+    description: 'Balances needs (50%), wants (30%), and savings/debt (20%).',
+    allocations: [
+      { category: 'Housing', percentage: 25 },
+      { category: 'Utilities', percentage: 5 },
+      { category: 'Food', percentage: 10 },
+      { category: 'Transport', percentage: 10 }, // Needs = 50%
+      { category: 'Entertainment', percentage: 10 },
+      { category: 'Dining Out', percentage: 10 },
+      { category: 'Shopping', percentage: 10 }, // Wants = 30%
+      { category: 'Savings', percentage: 15 },
+      { category: 'Debt Repayment', percentage: 5 }, // Savings/Debt = 20%
+    ],
+  },
+  'student': {
+    name: 'Student Budget',
+    description: 'Focuses on essentials and minimizing discretionary spending.',
+    allocations: [
+      { category: 'Housing', percentage: 30 },
+      { category: 'Food', percentage: 15 },
+      { category: 'Tuition/Fees', percentage: 20 },
+      { category: 'Books & Supplies', percentage: 5 },
+      { category: 'Transport', percentage: 10 },
+      { category: 'Utilities', percentage: 5 },
+      { category: 'Personal Care', percentage: 5 },
+      { category: 'Savings', percentage: 5 },
+      { category: 'Entertainment', percentage: 5 },
+    ],
+  },
+  'debt-reduction': {
+    name: 'Debt Reduction Focus',
+    description: 'Prioritizes paying down debt aggressively.',
+    allocations: [
+      { category: 'Housing', percentage: 25 },
+      { category: 'Utilities', percentage: 5 },
+      { category: 'Food', percentage: 10 },
+      { category: 'Transport', percentage: 10 },
+      { category: 'Debt Repayment', percentage: 30 }, // High debt focus
+      { category: 'Savings', percentage: 10 }, // Still save something
+      { category: 'Personal Care', percentage: 5 },
+      { category: 'Entertainment', percentage: 5 }, // Minimal wants
+    ],
+  },
+};
+
 export default function ZeroBudgetPage() {
   // State
   const [income, setIncome] = useState<number>(0);
@@ -50,6 +131,9 @@ export default function ZeroBudgetPage() {
   const [newCategory, setNewCategory] = useState<string>('');
   const [newAmount, setNewAmount] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  const [showTemplateConfirm, setShowTemplateConfirm] = useState(false);
+  const [pendingTemplate, setPendingTemplate] = useState<string | null>(null);
   
   // Refs for animations
   const headerRef = useRef<HTMLHeadingElement>(null);
@@ -136,7 +220,7 @@ export default function ZeroBudgetPage() {
       // Animate cards with stagger
       if (cardRefs.current.length > 0) {
         gsap.fromTo(
-          cardRefs.current,
+          cardRefs.current.filter(el => el !== null),
           { opacity: 0, y: 20 },
           { 
             opacity: 1, 
@@ -265,6 +349,76 @@ export default function ZeroBudgetPage() {
     setAllocations(updated);
   };
   
+  // Apply Budget Template
+  const handleApplyTemplate = () => {
+    if (!pendingTemplate || !(pendingTemplate in budgetTemplates)) return; // Check if key exists
+    if (income <= 0) {
+      toast.error('Please set your Total Budget before applying a template.');
+      setShowTemplateConfirm(false);
+      setPendingTemplate(null);
+      return;
+    }
+
+    const templateKey = pendingTemplate as BudgetTemplateKey; // Cast to the key type
+    const template = budgetTemplates[templateKey];
+    const newAllocations: BudgetAllocation[] = template.allocations
+      .map((alloc: TemplateAllocation, index: number) => { // Add types for alloc and index
+        const categoryExists = availableExpenseCategoriesArray.includes(alloc.category as MainExpenseCategory);
+        if (!categoryExists) {
+          console.warn(`Template category "${alloc.category}" not found in available categories. Skipping.`);
+          return null;
+        }
+        
+        const amount = (alloc.percentage / 100) * income;
+        const categoryDetails = getExpenseCategoryDetails(alloc.category as MainExpenseCategory);
+        const colorHex = categoryDetails.color.includes('text-')
+          ? categoryDetails.color.replace('text-', 'bg-')
+          : categoryDetails.color;
+
+        return {
+          id: `alloc_template_${templateKey}_${index}`, // Use templateKey
+          category: alloc.category,
+          amount: parseFloat(amount.toFixed(2)),
+          percentage: alloc.percentage,
+          color: colorHex,
+        };
+      })
+      .filter((alloc): alloc is BudgetAllocation => alloc !== null);
+
+    const totalAmount = newAllocations.reduce((sum, a) => sum + a.amount, 0);
+    const remainder = income - totalAmount;
+    if (Math.abs(remainder) > 0.01 && newAllocations.length > 0) {
+      const miscCategory = 'Miscellaneous';
+      const miscIndex = newAllocations.findIndex(a => a.category === miscCategory);
+      if (miscIndex !== -1) {
+        newAllocations[miscIndex].amount += remainder;
+        newAllocations[miscIndex].percentage = (newAllocations[miscIndex].amount / income) * 100;
+      } else if (availableExpenseCategoriesArray.includes(miscCategory as MainExpenseCategory)) {
+         const categoryDetails = getExpenseCategoryDetails(miscCategory as MainExpenseCategory);
+         const colorHex = categoryDetails.color.includes('text-') ? categoryDetails.color.replace('text-', 'bg-') : categoryDetails.color;
+         newAllocations.push({
+           id: `alloc_template_${templateKey}_misc`, // Use templateKey
+           category: miscCategory,
+           amount: parseFloat(remainder.toFixed(2)),
+           percentage: (remainder / income) * 100,
+           color: colorHex,
+         });
+      }
+    }
+
+    setAllocations(newAllocations);
+    toast.success(`Applied "${template.name}" template.`);
+    setShowTemplateConfirm(false);
+    setPendingTemplate(null);
+    setSelectedTemplate('');
+  };
+
+  const confirmApplyTemplate = (templateKey: string) => {
+    if (!templateKey || !(templateKey in budgetTemplates)) return; // Check if key exists
+    setPendingTemplate(templateKey);
+    setShowTemplateConfirm(true);
+  };
+
   // Generate chart data from allocations
   const chartData = [
     ...allocations,
@@ -590,6 +744,45 @@ export default function ZeroBudgetPage() {
           
           {/* Right Column */}
           <div className="lg:col-span-4 space-y-6">
+            {/* Budget Templates Card */}
+            <Card
+              ref={setCardRef(4)}
+              className="border-0 shadow-sm bg-white/80 dark:bg-[#2C2C2E]/80 backdrop-blur-md rounded-2xl overflow-hidden hover:shadow-md transition-all duration-300"
+            >
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-[#D4E7FE] dark:bg-[#162A41] rounded-full">
+                    <FileText className="h-5 w-5 text-[#007AFF] dark:text-[#0A84FF]" />
+                  </div>
+                  <CardTitle className="text-lg font-semibold text-[#1D1D1F] dark:text:white">
+                    Budget Templates
+                  </CardTitle>
+                </div>
+                <CardDescription className="text-[#86868B] dark:text-[#98989D] text-sm">
+                  Apply a template to kickstart your budget.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <Select value={selectedTemplate} onValueChange={confirmApplyTemplate}>
+                    <SelectTrigger className="w-full bg-white/70 dark:bg-[#3A3A3C]/70 border-[#E5E5EA] dark:border-[#48484A]">
+                      <SelectValue placeholder="Select a template..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(budgetTemplates).map(([key, template]) => (
+                        <SelectItem key={key} value={key}>
+                          <div className="flex flex-col">
+                            <span>{template.name}</span>
+                            <span className="text-xs text-muted-foreground">{template.description}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Tips Card */}
             <Card
               ref={setCardRef(2)}
@@ -749,6 +942,24 @@ export default function ZeroBudgetPage() {
           </div>
         </div>
       </main>
+
+      {/* Template Confirmation Dialog */}
+      <AlertDialog open={showTemplateConfirm} onOpenChange={setShowTemplateConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apply Budget Template?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Applying the "{pendingTemplate && (pendingTemplate in budgetTemplates) ? budgetTemplates[pendingTemplate as BudgetTemplateKey]?.name : ''}" template will replace your current budget allocations. Are you sure?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setPendingTemplate(null); setSelectedTemplate(''); }}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleApplyTemplate} className="bg-[#007AFF] hover:bg-[#0071E3] dark:bg-[#0A84FF] dark:hover:bg-[#0071E3] text-white">
+              Apply Template
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
