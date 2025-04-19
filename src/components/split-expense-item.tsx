@@ -1,18 +1,15 @@
 'use client';
 
-import React, { useRef, useEffect } from 'react';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Trash2, DollarSign } from "lucide-react";
-import { getExpenseCategoryDetails, getFlatCategoryOptions } from '@/config/expense-categories';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { gsap } from 'gsap';
+import React from 'react';
+import { X, Minus, Plus } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { CategorySelect } from '@/components/ui/category-select';
 
-export interface SplitItem {
+export type SplitItem = {
   id: string;
   category: string;
   amount: number;
-}
+};
 
 interface SplitExpenseItemProps {
   item: SplitItem;
@@ -23,165 +20,78 @@ interface SplitExpenseItemProps {
   onRemove: (id: string) => void;
 }
 
-export function SplitExpenseItem({
-  item,
-  index,
-  totalAmount,
+export function SplitExpenseItem({ 
+  item, 
+  index, 
+  totalAmount, 
   remainingAmount,
-  onUpdate,
-  onRemove
+  onUpdate, 
+  onRemove 
 }: SplitExpenseItemProps) {
-  const { icon: Icon, color } = getExpenseCategoryDetails(item.category);
-  const cardRef = useRef<HTMLDivElement>(null);
-
-  const categoryOptions = getFlatCategoryOptions();
-
-  const percentage = totalAmount > 0 ? Math.round((item.amount / totalAmount) * 100) : 0;
-
-  useEffect(() => {
-    if (cardRef.current) {
-      gsap.fromTo(
-        cardRef.current,
-        { 
-          opacity: 0, 
-          y: 20,
-          scale: 0.95 
-        },
-        { 
-          opacity: 1, 
-          y: 0, 
-          scale: 1,
-          duration: 0.3, 
-          delay: index * 0.1,
-          ease: "back.out(1.4)"
-        }
-      );
-    }
-  }, [index]);
-
-  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newAmount = e.target.valueAsNumber || 0;
-    const maxAllowedAmount = item.amount + remainingAmount;
-    const validAmount = Math.min(newAmount, maxAllowedAmount);
-    
-    if (cardRef.current) {
-      const amountInput = cardRef.current.querySelector('.amount-input');
-      gsap.fromTo(
-        amountInput,
-        { scale: 0.95 },
-        { scale: 1, duration: 0.2, ease: "back.out(1.2)" }
-      );
-    }
-    
-    onUpdate(item.id, 'amount', validAmount);
-  };
-
-  const handleCategoryChange = (categoryValue: string) => {
-    if (cardRef.current) {
-      const categoryIconContainer = cardRef.current.querySelector('.category-icon-container');
-      if (categoryIconContainer) {
-        gsap.fromTo(
-          categoryIconContainer,
-          { rotate: -15, scale: 0.8 },
-          { rotate: 0, scale: 1, duration: 0.3, ease: "elastic.out(1, 0.5)" }
-        );
-      }
-    }
-    
-    onUpdate(item.id, 'category', categoryValue);
-  };
-
-  const handleRemove = () => {
-    if (cardRef.current) {
-      gsap.to(cardRef.current, {
-        opacity: 0,
-        y: -20,
-        scale: 0.9,
-        duration: 0.2,
-        onComplete: () => onRemove(item.id)
-      });
-    } else {
-      onRemove(item.id);
+  const incrementAmount = () => {
+    if (remainingAmount > 0) {
+      const increment = Math.min(1, remainingAmount);
+      onUpdate(item.id, 'amount', (item.amount || 0) + increment);
     }
   };
-
+  
+  const decrementAmount = () => {
+    const amount = item.amount || 0;
+    if (amount > 1) {
+      onUpdate(item.id, 'amount', amount - 1);
+    }
+  };
+  
   return (
-    <div 
-      ref={cardRef} 
-      className="bg-white/60 dark:bg-[#3A3A3C]/60 backdrop-blur-md rounded-xl p-4 mb-3 border border-[#F2F2F7] dark:border-[#48484A] hover:shadow-sm transition-all split-expense-item"
-    >
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2 category-icon-container">
-          {Icon && (
-            <div className={`p-1.5 rounded-full ${color} bg-opacity-15`}>
-              <Icon className="h-4 w-4" />
-            </div>
-          )}
-          <span className="font-medium text-sm text-[#1D1D1F] dark:text-white">Split Item {index + 1}</span>
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 w-7 rounded-full hover:bg-[#F2F2F7] dark:hover:bg-[#38383A] p-0 transition-all hover:scale-110"
-          onClick={handleRemove}
-        >
-          <Trash2 className="h-4 w-4 text-[#FF3B30] dark:text-[#FF453A]" />
-        </Button>
+    <div className={`
+      flex items-center gap-3 p-3 rounded-xl
+      ${index === 0 ? 'bg-[#F2F2F7] dark:bg-[#2C2C2E]' : 'bg-[#F9F9FA] dark:bg-[#38383A]'}
+    `}>
+      <div className="flex-1">
+        <CategorySelect
+          value={item.category}
+          onValueChange={(value) => onUpdate(item.id, 'category', value)}
+          placeholder="Select category"
+        />
       </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <Select 
-            value={item.category} 
-            onValueChange={handleCategoryChange}
-          >
-            <SelectTrigger className="rounded-xl bg-white/60 dark:bg-[#3A3A3C]/60 backdrop-blur-md shadow-sm border-[0.5px] border-[#DADADC] dark:border-[#48484A] focus:ring-[#007AFF] dark:focus:ring-[#0A84FF] focus:ring-opacity-30">
-              <SelectValue placeholder="Select category" />
-            </SelectTrigger>
-            <SelectContent className="bg-white/90 dark:bg-[#3A3A3C]/90 backdrop-blur-md rounded-lg border-[#DADADC] dark:border-[#48484A]">
-              {categoryOptions.map((option) => (
-                <SelectItem 
-                  key={option.value} 
-                  value={option.value} 
-                  className="focus:bg-[#F2F2F7] dark:focus:bg-[#48484A] rounded-md"
-                >
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="relative amount-input">
-          <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-[#86868B] dark:text-[#A1A1A6] pointer-events-none" />
+      <div className="w-32 flex items-center">
+        <button
+          type="button"
+          onClick={decrementAmount}
+          disabled={!item.amount || item.amount <= 1}
+          className="p-1 rounded-md text-[#8E8E93] dark:text-[#98989D] hover:bg-[#E5E5EA] dark:hover:bg-[#48484A] disabled:opacity-50 disabled:hover:bg-transparent"
+        >
+          <Minus className="h-4 w-4" />
+        </button>
+        <div className="flex-1 mx-1">
           <Input
             type="number"
-            value={item.amount || ''}
-            onChange={handleAmountChange}
-            className="pl-9 rounded-xl bg-white/60 dark:bg-[#3A3A3C]/60 backdrop-blur-md shadow-sm border-[0.5px] border-[#DADADC] dark:border-[#48484A] focus:ring-[#007AFF] dark:focus:ring-[#0A84FF] focus:ring-opacity-30"
             step="0.01"
             min="0"
+            value={item.amount?.toString() || ''}
+            onChange={(e) => {
+              const value = parseFloat(e.target.value);
+              onUpdate(item.id, 'amount', isNaN(value) ? 0 : value);
+            }}
+            className="h-8 px-2 text-center bg-white/60 dark:bg-[#3A3A3C]/60 backdrop-blur-sm border-[#DADADC] dark:border-[#48484A] rounded-lg"
           />
         </div>
+        <button
+          type="button"
+          onClick={incrementAmount}
+          disabled={remainingAmount <= 0}
+          className="p-1 rounded-md text-[#8E8E93] dark:text-[#98989D] hover:bg-[#E5E5EA] dark:hover:bg-[#48484A] disabled:opacity-50 disabled:hover:bg-transparent"
+        >
+          <Plus className="h-4 w-4" />
+        </button>
       </div>
-      
-      <div className="flex justify-between items-center mt-3 text-xs text-[#86868B] dark:text-[#98989D] px-1">
-        <div className="flex items-center gap-1.5">
-          <div className="w-full bg-[#F2F2F7] dark:bg-[#38383A] rounded-full h-1.5 overflow-hidden">
-            <div 
-              className={`h-full rounded-full ${
-                percentage >= 75 ? 'bg-[#FF3B30] dark:bg-[#FF453A]' : 
-                percentage >= 50 ? 'bg-[#FF9500] dark:bg-[#FF9F0A]' : 
-                'bg-[#34C759] dark:bg-[#30D158]'
-              } transition-all duration-300 ease-out`}
-              style={{ width: `${percentage}%` }}
-            ></div>
-          </div>
-          <span className="font-medium">{percentage}%</span>
-        </div>
-        <div>
-          <span className="font-medium">${item.amount?.toFixed(2) || '0.00'}</span>
-        </div>
-      </div>
+      <button
+        type="button"
+        onClick={() => onRemove(item.id)}
+        className="p-1.5 rounded-full bg-[#FF3B30]/10 dark:bg-[#FF453A]/20 text-[#FF3B30] dark:text-[#FF453A] hover:bg-[#FF3B30]/20 dark:hover:bg-[#FF453A]/30 transition-colors"
+      >
+        <X className="h-4 w-4" />
+      </button>
     </div>
   );
 }

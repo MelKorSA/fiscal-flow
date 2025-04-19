@@ -47,6 +47,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { RecurrenceFrequency } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ExpenseCategory } from "@/config/expense-categories";
+import { CategorySelect } from "@/components/ui/category-select";
 
 export type Account = {
   id: string;
@@ -352,24 +353,14 @@ export function AddRecurringTransactionForm({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-[#86868B] dark:text-[#98989D]">Category</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="bg-white/60 dark:bg-[#3A3A3C]/60 backdrop-blur-md border-[#DADADC] dark:border-[#48484A] rounded-xl">
-                            <SelectValue placeholder="Select category" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent className="bg-white/90 dark:bg-[#3A3A3C]/90 backdrop-blur-md rounded-lg">
-                          {categories.map((category) => (
-                            <SelectItem 
-                              key={category} 
-                              value={category}
-                              className="focus:bg-[#F2F2F7] dark:focus:bg-[#48484A]"
-                            >
-                              {category}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <CategorySelect 
+                          value={field.value || ''} 
+                          onValueChange={field.onChange} 
+                          disabled={form.formState.isSubmitting}
+                          placeholder="Select category"
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

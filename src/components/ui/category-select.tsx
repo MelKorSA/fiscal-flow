@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useRef, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Select,
   SelectTrigger,
@@ -24,13 +25,17 @@ import {
   Variants 
 } from 'framer-motion';
 import { gsap } from 'gsap';
-import { Search, ChevronDown, X, ArrowRight, ChevronRight } from 'lucide-react';
+import { Search, ChevronDown, X, ArrowRight, ChevronRight, Sparkles } from 'lucide-react';
 
 interface CategorySelectProps {
   value: string;
   onValueChange: (value: string) => void;
   disabled?: boolean;
   placeholder?: string;
+  aiSuggestion?: { category: string; confidence: number } | null;
+  isCategorizing?: boolean;
+  description?: string;
+  required?: boolean;
 }
 
 // Animations variants
@@ -75,13 +80,35 @@ const dropdownVariants: Variants = {
   }
 };
 
-export function CategorySelect({ value, onValueChange, disabled = false, placeholder = "Select a category" }: CategorySelectProps) {
+// Portal component for the dropdown
+function DropdownPortal({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  return mounted ? createPortal(children, document.body) : null;
+}
+
+export function CategorySelect({ 
+  value, 
+  onValueChange, 
+  disabled = false, 
+  placeholder = "Select a category",
+  aiSuggestion = null,
+  isCategorizing = false,
+  description = "",
+  required = false
+}: CategorySelectProps) {
   // State
   const [isOpen, setIsOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
   const [activeCategory, setActiveCategory] = useState<MainExpenseCategory | null>(null);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [showRecents, setShowRecents] = useState(true);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   
   // Refs
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -205,14 +232,66 @@ export function CategorySelect({ value, onValueChange, disabled = false, placeho
     return null;
   }, [value, processedCategories]);
   
+  // Calculate dropdown position
+  const updateDropdownPosition = () => {
+    if (!triggerRef.current) return;
+    
+    const rect = triggerRef.current.getBoundingClientRect();
+    
+    // Check if dropdown would overflow to the right
+    const exceedsRight = rect.left + 340 > window.innerWidth;
+    
+    // Position for the dropdown
+    const left = exceedsRight 
+      ? window.innerWidth - 340 - 16 // Align to right with padding
+      : Math.max(16, rect.left); // Keep it within viewport from left
+    
+    // Calculate top position - below the trigger
+    const top = rect.bottom + window.scrollY + 5;
+    
+    setDropdownPosition({ top, left });
+  };
+  
+  // Handle window resize to reposition dropdown
+  useEffect(() => {
+    const handleResize = () => {
+      if (isOpen) updateDropdownPosition();
+    };
+    
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('scroll', handleResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('scroll', handleResize);
+    };
+  }, [isOpen]);
+  
   // Handle dropdown open/close
   useEffect(() => {
     if (isOpen) {
       controls.start("visible");
+      updateDropdownPosition();
+      
       // Focus search input when dropdown opens
       setTimeout(() => {
         searchInputRef.current?.focus();
       }, 100);
+      
+      // Add event listener to close dropdown when clicking outside
+      const handleClickOutside = (e: MouseEvent) => {
+        if (
+          dropdownRef.current && 
+          !dropdownRef.current.contains(e.target as Node) &&
+          triggerRef.current &&
+          !triggerRef.current.contains(e.target as Node)
+        ) {
+          setIsOpen(false);
+        }
+      };
+      
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
     } else {
       controls.start("hidden");
       setActiveCategory(null);
@@ -261,6 +340,11 @@ export function CategorySelect({ value, onValueChange, disabled = false, placeho
         .ios-scrollbars:hover::-webkit-scrollbar-thumb {
           opacity: 1;
         }
+      }
+      
+      .category-dropdown {
+        z-index: 9999;
+        position: absolute;
       }
     `;
     document.head.appendChild(style);
@@ -338,6 +422,7 @@ export function CategorySelect({ value, onValueChange, disabled = false, placeho
           bg-white/70 dark:bg-[#1C1C1E]/80 backdrop-blur-xl
           rounded-xl border border-[#E5E5EA] dark:border-[#38383A]
           transition-all duration-200
+          ${required ? 'required:ring-2 required:ring-red-500' : ''}
           ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-md active:scale-[0.98]'}
         `}
       >
@@ -370,274 +455,313 @@ export function CategorySelect({ value, onValueChange, disabled = false, placeho
           ${isOpen ? 'rotate-180' : ''}
         `} />
       </button>
+
+      {/* AI Suggestion Indicator */}
+      {(aiSuggestion || isCategorizing) && description && (
+        <div className={`
+          absolute top-0 right-1 -mt-6 flex items-center gap-1 px-2 py-0.5 rounded-md text-xs
+          ${aiSuggestion ? 'bg-[#E5F8EF]/80 dark:bg-[#0C372A]/80 text-[#34C759] dark:text-[#30D158]' : ''}
+          ${isCategorizing ? 'bg-[#F2F2F7]/80 dark:bg-[#2C2C2E]/80 text-[#8E8E93] dark:text-[#98989D]' : ''}
+          backdrop-blur-sm
+        `}>
+          {isCategorizing ? (
+            <>
+              <div className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent"></div>
+              <span>AI analyzing...</span>
+            </>
+          ) : aiSuggestion ? (
+            <>
+              <Sparkles className="h-3 w-3" />
+              <span 
+                className="cursor-pointer hover:underline"
+                onClick={() => onValueChange(aiSuggestion.category)}
+              >
+                AI suggests: {parseCategoryValue(aiSuggestion.category)}
+              </span>
+            </>
+          ) : null}
+        </div>
+      )}
       
-      {/* Custom dropdown */}
+      {/* Custom dropdown rendered in a portal */}
       <AnimatePresence>
         {isOpen && (
-          <motion.div
-            ref={dropdownRef}
-            className={`
-              absolute z-50 mt-2 w-[340px] max-w-[calc(100vw-2rem)] right-0
-              bg-white/95 dark:bg-[#1C1C1E]/95 backdrop-blur-xl
-              rounded-xl border border-[#E5E5EA] dark:border-[#38383A]
-              p-3 shadow-xl overflow-hidden
-            `}
-            variants={dropdownVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-          >
-            {/* Search box */}
-            <motion.div 
-              className="mb-2" 
-              variants={searchVariants}
+          <DropdownPortal>
+            <motion.div
+              ref={dropdownRef}
+              className="category-dropdown"
+              style={{
+                position: 'absolute',
+                top: `${dropdownPosition.top}px`,
+                left: `${dropdownPosition.left}px`,
+                width: '340px',
+                maxWidth: 'calc(100vw - 2rem)',
+                zIndex: 9999,
+                background: 'var(--bg-color, rgba(255, 255, 255, 0.95))',
+                borderRadius: '0.75rem',
+                border: '1px solid var(--border-color, rgba(229, 229, 234, 1))',
+                padding: '0.75rem',
+                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
+                backdropFilter: 'blur(10px)',
+                overflowY: 'auto',
+              }}
+              variants={dropdownVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
             >
-              <div className="relative">
-                <div className={`
-                  absolute left-3 top-1/2 transform -translate-y-1/2 
-                  transition-all duration-200
-                  ${isSearchFocused ? 'text-[#007AFF] dark:text-[#0A84FF]' : 'text-[#8E8E93] dark:text-[#98989D]'}
-                `}>
-                  <Search className="h-4 w-4" />
-                </div>
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  placeholder="Search categories..."
-                  value={searchValue}
-                  onChange={(e) => setSearchValue(e.target.value)}
-                  onFocus={() => setIsSearchFocused(true)}
-                  onBlur={() => setIsSearchFocused(false)}
-                  className={`
-                    w-full h-10 pl-10 pr-10 py-2
-                    bg-[#F2F2F7] dark:bg-[#2C2C2E] 
-                    rounded-xl text-[#1D1D1F] dark:text-white
-                    placeholder:text-[#8E8E93] dark:placeholder:text-[#98989D]
-                    outline-none ring-0 border-2 border-transparent
+              {/* Search box */}
+              <motion.div 
+                className="mb-2" 
+                variants={searchVariants}
+              >
+                <div className="relative">
+                  <div className={`
+                    absolute left-3 top-1/2 transform -translate-y-1/2 
                     transition-all duration-200
-                    ${isSearchFocused ? 'border-[#007AFF] dark:border-[#0A84FF]' : ''}
-                  `}
-                />
-                <AnimatePresence>
-                  {searchValue && (
-                    <motion.button
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      transition={{ duration: 0.15 }}
-                      onClick={clearSearch}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#8E8E93] dark:text-[#98989D] hover:text-[#FF3B30] dark:hover:text-[#FF453A] transition-colors"
-                    >
-                      <X className="h-4 w-4" />
-                    </motion.button>
-                  )}
-                </AnimatePresence>
-              </div>
-            </motion.div>
-
-            {/* Recent categories */}
-            <AnimatePresence>
-              {showRecents && searchValue === "" && recentCategories.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="mb-3"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-xs font-medium text-[#8E8E93] dark:text-[#98989D] uppercase tracking-wider">Recent</h3>
-                    <button 
-                      onClick={() => setShowRecents(false)}
-                      className="text-xs text-[#007AFF] dark:text-[#0A84FF]"
-                    >
-                      Hide
-                    </button>
+                    ${isSearchFocused ? 'text-[#007AFF] dark:text-[#0A84FF]' : 'text-[#8E8E93] dark:text-[#98989D]'}
+                  `}>
+                    <Search className="h-4 w-4" />
                   </div>
-                  
-                  <div className="flex flex-wrap gap-2">
-                    {recentCategories.map(recentValue => {
-                      const details = (() => {
-                        if (recentValue.startsWith('main-')) {
-                          const mainCategory = recentValue.substring(5) as MainExpenseCategory;
-                          const categoryInfo = processedCategories.find(c => c.mainCategory === mainCategory);
-                          if (categoryInfo) {
-                            return {
-                              name: mainCategory,
-                              icon: categoryInfo.icon,
-                              color: categoryInfo.color
-                            };
-                          }
-                        } else if (recentValue.startsWith('sub-')) {
-                          const parts = recentValue.split('-');
-                          if (parts.length >= 3) {
-                            const mainCategory = parts[1] as MainExpenseCategory;
-                            const subcategory = parts.slice(2).join('-');
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    placeholder="Search categories..."
+                    value={searchValue}
+                    onChange={(e) => setSearchValue(e.target.value)}
+                    onFocus={() => setIsSearchFocused(true)}
+                    onBlur={() => setIsSearchFocused(false)}
+                    className={`
+                      w-full h-10 pl-10 pr-10 py-2
+                      bg-[#F2F2F7] dark:bg-[#2C2C2E] 
+                      rounded-xl text-[#1D1D1F] dark:text-white
+                      placeholder:text-[#8E8E93] dark:placeholder:text-[#98989D]
+                      outline-none ring-0 border-2 border-transparent
+                      transition-all duration-200
+                      ${isSearchFocused ? 'border-[#007AFF] dark:border-[#0A84FF]' : ''}
+                    `}
+                  />
+                  <AnimatePresence>
+                    {searchValue && (
+                      <motion.button
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={{ duration: 0.15 }}
+                        onClick={clearSearch}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#8E8E93] dark:text-[#98989D] hover:text-[#FF3B30] dark:hover:text-[#FF453A] transition-colors"
+                      >
+                        <X className="h-4 w-4" />
+                      </motion.button>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </motion.div>
+
+              {/* Recent categories */}
+              <AnimatePresence>
+                {showRecents && searchValue === "" && recentCategories.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mb-3"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-xs font-medium text-[#8E8E93] dark:text-[#98989D] uppercase tracking-wider">Recent</h3>
+                      <button 
+                        onClick={() => setShowRecents(false)}
+                        className="text-xs text-[#007AFF] dark:text-[#0A84FF]"
+                      >
+                        Hide
+                      </button>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-2">
+                      {recentCategories.map(recentValue => {
+                        const details = (() => {
+                          if (recentValue.startsWith('main-')) {
+                            const mainCategory = recentValue.substring(5) as MainExpenseCategory;
                             const categoryInfo = processedCategories.find(c => c.mainCategory === mainCategory);
-                            
                             if (categoryInfo) {
                               return {
-                                name: subcategory,
+                                name: mainCategory,
                                 icon: categoryInfo.icon,
                                 color: categoryInfo.color
                               };
                             }
+                          } else if (recentValue.startsWith('sub-')) {
+                            const parts = recentValue.split('-');
+                            if (parts.length >= 3) {
+                              const mainCategory = parts[1] as MainExpenseCategory;
+                              const subcategory = parts.slice(2).join('-');
+                              const categoryInfo = processedCategories.find(c => c.mainCategory === mainCategory);
+                              
+                              if (categoryInfo) {
+                                return {
+                                  name: subcategory,
+                                  icon: categoryInfo.icon,
+                                  color: categoryInfo.color
+                                };
+                              }
+                            }
                           }
-                        }
-                        return null;
-                      })();
+                          return null;
+                        })();
 
-                      if (!details) return null;
+                        if (!details) return null;
 
-                      return (
-                        <motion.button
-                          key={recentValue}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => handleCategorySelect(recentValue)}
-                          className={`
-                            flex items-center gap-1.5 px-3 py-1.5
-                            bg-[#F2F2F7] dark:bg-[#2C2C2E]
-                            rounded-full hover:shadow-sm
-                            transition-all duration-200
-                          `}
-                        >
-                          <details.icon className={`h-3.5 w-3.5 ${details.color}`} />
-                          <span className="text-xs text-[#1D1D1F] dark:text-white truncate max-w-[100px]">
-                            {details.name}
-                          </span>
-                        </motion.button>
-                      );
-                    })}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Categories list */}
-            <div className="max-h-[300px] overflow-y-auto ios-scrollbars">
-              <motion.div
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-                className="space-y-1"
-              >
-                {filteredCategories.map((category) => (
-                  <div key={category.id}>
-                    {/* Main category */}
-                    <motion.div 
-                      variants={itemVariants}
-                      className="relative"
-                    >
-                      <motion.button
-                        onClick={() => handleDirectSelection(category.mainCategory)}
-                        className={`
-                          w-full flex items-center justify-between gap-2 px-3 py-2
-                          rounded-lg text-left group
-                          ${activeCategory === category.mainCategory ? 'bg-[#F2F2F7] dark:bg-[#2C2C2E]' : 'hover:bg-[#F2F2F7] dark:hover:bg-[#2C2C2E]'}
-                          transition-colors duration-150
-                        `}
-                      >
-                        <div className="flex items-center gap-3">
-                          <motion.div 
+                        return (
+                          <motion.button
+                            key={recentValue}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => handleCategorySelect(recentValue)}
                             className={`
-                              w-8 h-8 rounded-full flex items-center justify-center
-                              ${category.color.replace('text-', 'bg-').replace('500', '100').replace('600', '100').replace('700', '100')}
-                              dark:bg-opacity-30 group-hover:scale-110 transition-transform duration-200
+                              flex items-center gap-1.5 px-3 py-1.5
+                              bg-[#F2F2F7] dark:bg-[#2C2C2E]
+                              rounded-full hover:shadow-sm
+                              transition-all duration-200
                             `}
-                            whileTap={{ scale: 0.9 }}
                           >
-                            <category.icon className={`h-4 w-4 ${category.color}`} />
-                          </motion.div>
-                          <span className="font-medium text-[#1D1D1F] dark:text-white">
-                            {category.mainCategory}
-                          </span>
-                        </div>
-                        
-                        {category.subcategories.length > 0 ? (
-                          <div className="flex items-center gap-1">
-                            {/* Changed button to div to avoid nesting */}
-                            <div
-                              role="button" // Add role for accessibility
-                              tabIndex={0} // Make it focusable
-                              onClick={(e) => {
-                                e.stopPropagation(); // Prevent triggering the parent button's onClick
-                                handleCategorySelect(`main-${category.mainCategory}`);
-                              }}
-                              onKeyDown={(e) => { // Add keyboard interaction
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                  e.stopPropagation();
-                                  handleCategorySelect(`main-${category.mainCategory}`);
-                                }
-                              }}
-                              className="text-xs bg-[#007AFF]/10 dark:bg-[#0A84FF]/20 text-[#007AFF] dark:text-[#0A84FF] px-2 py-0.5 rounded-full hover:bg-[#007AFF]/20 dark:hover:bg-[#0A84FF]/30 transition-colors cursor-pointer" // Added cursor-pointer
-                            >
-                              Select
-                            </div>
-                            <ChevronRight 
-                              className={`
-                                h-4 w-4 text-[#8E8E93] dark:text-[#98989D]
-                                transition-transform duration-200
-                                ${activeCategory === category.mainCategory ? 'rotate-90' : ''}
-                              `}
-                            />
-                          </div>
-                        ) : (
-                          <ArrowRight className="h-4 w-4 text-[#8E8E93] dark:text-[#98989D] opacity-0 group-hover:opacity-100 transition-opacity" />
-                        )}
-                      </motion.button>
-                    </motion.div>
-                    
-                    {/* Subcategories */}
-                    <AnimatePresence>
-                      {activeCategory === category.mainCategory && category.subcategories.length > 0 && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          className="pl-10 space-y-0.5 overflow-hidden"
-                        >
-                          {category.subcategories.map((subcategory) => (
-                            <motion.button
-                              key={subcategory.id}
-                              whileTap={{ scale: 0.98 }}
-                              onClick={() => handleCategorySelect(subcategory.value)}
-                              className={`
-                                w-full flex items-center justify-between gap-2 px-3 py-2
-                                rounded-lg text-left
-                                hover:bg-[#F2F2F7] dark:hover:bg-[#2C2C2E]
-                                transition-colors duration-150
-                              `}
-                            >
-                              <span className="text-[#1D1D1F] dark:text-white">
-                                {subcategory.name}
-                              </span>
-                              <ArrowRight className="h-3.5 w-3.5 text-[#8E8E93] dark:text-[#98989D] opacity-0 group-hover:opacity-100 transition-opacity" />
-                            </motion.button>
-                          ))}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                ))}
-                
-                {filteredCategories.length === 0 && (
-                  <motion.div
-                    variants={itemVariants}
-                    className="py-10 flex flex-col items-center justify-center text-center"
-                  >
-                    <div className="w-12 h-12 mb-3 bg-[#F2F2F7] dark:bg-[#2C2C2E] rounded-full flex items-center justify-center">
-                      <Search className="h-5 w-5 text-[#8E8E93] dark:text-[#98989D]" />
+                            <details.icon className={`h-3.5 w-3.5 ${details.color}`} />
+                            <span className="text-xs text-[#1D1D1F] dark:text-white truncate max-w-[100px]">
+                              {details.name}
+                            </span>
+                          </motion.button>
+                        );
+                      })}
                     </div>
-                    <p className="text-sm font-medium text-[#1D1D1F] dark:text-white">
-                      No categories found
-                    </p>
-                    <p className="text-xs text-[#8E8E93] dark:text-[#98989D] mt-1">
-                      Try a different search term
-                    </p>
                   </motion.div>
                 )}
-              </motion.div>
-            </div>
-          </motion.div>
+              </AnimatePresence>
+
+              {/* Categories list */}
+              <div className="max-h-[400px] overflow-y-auto ios-scrollbars">
+                <motion.div
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="visible"
+                  className="space-y-1"
+                >
+                  {filteredCategories.map((category) => (
+                    <div key={category.id}>
+                      {/* Main category */}
+                      <motion.div 
+                        variants={itemVariants}
+                        className="relative"
+                      >
+                        <motion.button
+                          onClick={() => handleDirectSelection(category.mainCategory)}
+                          className={`
+                            w-full flex items-center justify-between gap-2 px-3 py-2
+                            rounded-lg text-left group
+                            ${activeCategory === category.mainCategory ? 'bg-[#F2F2F7] dark:bg-[#2C2C2E]' : 'hover:bg-[#F2F2F7] dark:hover:bg-[#2C2C2E]'}
+                            transition-colors duration-150
+                          `}
+                        >
+                          <div className="flex items-center gap-3">
+                            <motion.div 
+                              className={`
+                                w-8 h-8 rounded-full flex items-center justify-center
+                                ${category.color.replace('text-', 'bg-').replace('500', '100').replace('600', '100').replace('700', '100')}
+                                dark:bg-opacity-30 group-hover:scale-110 transition-transform duration-200
+                              `}
+                              whileTap={{ scale: 0.9 }}
+                            >
+                              <category.icon className={`h-4 w-4 ${category.color}`} />
+                            </motion.div>
+                            <span className="font-medium text-[#1D1D1F] dark:text-white">
+                              {category.mainCategory}
+                            </span>
+                          </div>
+                          
+                          {category.subcategories.length > 0 ? (
+                            <div className="flex items-center gap-1">
+                              {/* Changed button to div to avoid nesting */}
+                              <div
+                                role="button" // Add role for accessibility
+                                tabIndex={0} // Make it focusable
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Prevent triggering the parent button's onClick
+                                  handleCategorySelect(`main-${category.mainCategory}`);
+                                }}
+                                onKeyDown={(e) => { // Add keyboard interaction
+                                  if (e.key === 'Enter' || e.key === ' ') {
+                                    e.stopPropagation();
+                                    handleCategorySelect(`main-${category.mainCategory}`);
+                                  }
+                                }}
+                                className="text-xs bg-[#007AFF]/10 dark:bg-[#0A84FF]/20 text-[#007AFF] dark:text-[#0A84FF] px-2 py-0.5 rounded-full hover:bg-[#007AFF]/20 dark:hover:bg-[#0A84FF]/30 transition-colors cursor-pointer" // Added cursor-pointer
+                              >
+                                Select
+                              </div>
+                              <ChevronRight 
+                                className={`
+                                  h-4 w-4 text-[#8E8E93] dark:text-[#98989D]
+                                  transition-transform duration-200
+                                  ${activeCategory === category.mainCategory ? 'rotate-90' : ''}
+                                `}
+                              />
+                            </div>
+                          ) : (
+                            <ArrowRight className="h-4 w-4 text-[#8E8E93] dark:text-[#98989D] opacity-0 group-hover:opacity-100 transition-opacity" />
+                          )}
+                        </motion.button>
+                      </motion.div>
+                      
+                      {/* Subcategories */}
+                      <AnimatePresence>
+                        {activeCategory === category.mainCategory && category.subcategories.length > 0 && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="pl-10 space-y-0.5 overflow-hidden"
+                          >
+                            {category.subcategories.map((subcategory) => (
+                              <motion.button
+                                key={subcategory.id}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => handleCategorySelect(subcategory.value)}
+                                className={`
+                                  w-full flex items-center justify-between gap-2 px-3 py-2
+                                  rounded-lg text-left
+                                  hover:bg-[#F2F2F7] dark:hover:bg-[#2C2C2E]
+                                  transition-colors duration-150
+                                `}
+                              >
+                                <span className="text-[#1D1D1F] dark:text-white">
+                                  {subcategory.name}
+                                </span>
+                                <ArrowRight className="h-3.5 w-3.5 text-[#8E8E93] dark:text-[#98989D] opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </motion.button>
+                            ))}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  ))}
+                  
+                  {filteredCategories.length === 0 && (
+                    <motion.div
+                      variants={itemVariants}
+                      className="py-10 flex flex-col items-center justify-center text-center"
+                    >
+                      <div className="w-12 h-12 mb-3 bg-[#F2F2F7] dark:bg-[#2C2C2E] rounded-full flex items-center justify-center">
+                        <Search className="h-5 w-5 text-[#8E8E93] dark:text-[#98989D]" />
+                      </div>
+                      <p className="text-sm font-medium text-[#1D1D1F] dark:text-white">
+                        No categories found
+                      </p>
+                      <p className="text-xs text-[#8E8E93] dark:text-[#98989D] mt-1">
+                        Try a different search term
+                      </p>
+                    </motion.div>
+                  )}
+                </motion.div>
+              </div>
+            </motion.div>
+          </DropdownPortal>
         )}
       </AnimatePresence>
       

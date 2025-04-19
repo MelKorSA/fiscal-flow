@@ -20,6 +20,7 @@ import { Switch } from './ui/switch';
 import { SplitExpenseItem, SplitItem } from './split-expense-item';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
+import { CategorySelect } from './ui/category-select';
 
 interface AddExpenseFormProps {
   onAddExpense: (expense: { 
@@ -291,37 +292,14 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
       {!isSplitEnabled ? (
         <div className="space-y-2">
           <Label htmlFor="category" className="text-sm font-medium text-[#86868B] dark:text-[#A1A1A6]">Category</Label>
-          <Select value={category} onValueChange={setCategory} required>
-            <SelectTrigger 
-              id="category"
-              className="rounded-xl bg-white/60 dark:bg-[#3A3A3C]/60 backdrop-blur-md shadow-sm border-[0.5px] border-[#DADADC] dark:border-[#48484A] focus:ring-[#007AFF] dark:focus:ring-[#0A84FF] focus:ring-opacity-30 dark:focus:ring-opacity-30"
-            >
-              <SelectValue placeholder="Select category" />
-            </SelectTrigger>
-            <SelectContent className="bg-white/90 dark:bg-[#3A3A3C]/90 backdrop-blur-md rounded-lg border-[#DADADC] dark:border-[#48484A]">
-              {categoryOptions.map((option) => (
-                <SelectItem 
-                  key={option.value} 
-                  value={option.value} 
-                  className="focus:bg-[#F2F2F7] dark:focus:bg-[#48484A] rounded-md"
-                >
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {aiSuggestion && aiSuggestion.category !== category && (
-            <div className="mt-1 flex items-center gap-1 text-xs text-[#86868B] dark:text-[#A1A1A6]">
-              <Sparkles className="h-3 w-3 text-[#007AFF] dark:text-[#0A84FF]" />
-              <span>AI suggests: <span className="font-medium">{aiSuggestion.category}</span></span>
-            </div>
-          )}
-          {isCategorizing && description.length >= 3 && !aiSuggestion && (
-            <div className="flex items-center gap-2 text-xs text-[#86868B] dark:text-[#A1A1A6] mt-1">
-              <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
-              <span>Categorizing...</span>
-            </div>
-          )}
+          <CategorySelect 
+            value={category} 
+            onValueChange={setCategory} 
+            required={true}
+            aiSuggestion={aiSuggestion} 
+            isCategorizing={isCategorizing} 
+            description={description} 
+          />
         </div>
       ) : (
         <div className="space-y-3">
