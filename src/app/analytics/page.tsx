@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { DashboardHeader } from '@/components/dashboard-header'; // Import DashboardHeader
 import { AISpendingInsights } from '@/components/ai-spending-insights';
 import { PredictiveCashFlow } from '@/components/predictive-cash-flow';
 import { Skeleton } from '@/components/ui/skeleton'; // For loading state
@@ -46,27 +47,30 @@ export default function AnalyticsPage() {
   }, []);
 
   return (
-    <div className="flex flex-col gap-6 p-4 md:p-6">
-      <h1 className="text-2xl font-semibold text-[#1D1D1F] dark:text-white">Analytics Dashboard</h1>
+    <div className="flex flex-col min-h-screen bg-[#F5F5F7] dark:bg-[#1A1A1A]">
+      <DashboardHeader /> {/* Add DashboardHeader here */}
+      <main className="flex-1 overflow-y-auto p-4 md:p-6">
+        <h1 className="text-2xl font-semibold text-[#1D1D1F] dark:text-white mb-6">Analytics Dashboard</h1>
 
-      {loading ? (
-        <div className="grid gap-6 md:grid-cols-2">
-          <Skeleton className="h-[320px] rounded-2xl" />
-          <Skeleton className="h-[320px] rounded-2xl" />
-        </div>
-      ) : data ? (
-        <div className="grid gap-6 md:grid-cols-2">
-          <AISpendingInsights expenses={data.expenses} income={data.income} />
-          <PredictiveCashFlow
-            currentBalance={data.currentBalance}
-            transactions={[...data.expenses, ...data.income]} // Combine for potential baseline analysis
-            recurringTransactions={data.recurringTransactions}
-          />
-          {/* Add more analytics components here */}
-        </div>
-      ) : (
-        <p className="text-center text-gray-500">Could not load analytics data.</p>
-      )}
+        {loading ? (
+          <div className="grid gap-6 md:grid-cols-2">
+            <Skeleton className="h-[320px] rounded-2xl" />
+            <Skeleton className="h-[320px] rounded-2xl" />
+          </div>
+        ) : data ? (
+          <div className="grid gap-6 md:grid-cols-2">
+            <AISpendingInsights expenses={data.expenses} income={data.income} />
+            <PredictiveCashFlow
+              currentBalance={data.currentBalance}
+              transactions={[...data.expenses, ...data.income]} // Combine for potential baseline analysis
+              recurringTransactions={data.recurringTransactions}
+            />
+            {/* Add more analytics components here */}
+          </div>
+        ) : (
+          <p className="text-center text-gray-500">Could not load analytics data.</p>
+        )}
+      </main>
     </div>
   );
 }
