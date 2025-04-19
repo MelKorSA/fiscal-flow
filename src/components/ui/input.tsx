@@ -2,8 +2,13 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
-const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
-  ({ className, type, ...props }, ref) => {
+// Extend props to include suppressHydrationWarning
+interface InputProps extends React.ComponentProps<"input"> {
+  suppressHydrationWarning?: boolean;
+}
+
+const Input = React.forwardRef<HTMLInputElement, InputProps>(
+  ({ className, type, suppressHydrationWarning, ...props }, ref) => {
     return (
       <input
         type={type}
@@ -12,6 +17,7 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
           className
         )}
         ref={ref}
+        suppressHydrationWarning // Add this prop
         {...props}
       />
     )

@@ -8,6 +8,9 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  experimental: {
+    serverComponentsExternalPackages: ['handlebars'],
+  },
   webpack: (config, { isServer }) => {
     // Fixes npm packages that depend on `async_hooks` module
     if (!isServer) {

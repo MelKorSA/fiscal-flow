@@ -1,7 +1,8 @@
 'use server';
 
 import { z } from "zod";
-import { ai, createFlow } from "../ai-instance";
+// Import 'ai' directly instead of 'createFlow'
+import { ai } from "../ai-instance";
 import { format } from 'date-fns';
 
 // --- Input Schemas ---
@@ -42,6 +43,7 @@ const FinancialQAOutputSchema = z.object({
 });
 
 // --- Prompt Definition ---
+// Use ai.definePrompt directly
 const prompt = ai.definePrompt({
   name: "financialQAPrompt",
   input: {
@@ -50,34 +52,51 @@ const prompt = ai.definePrompt({
   output: {
     schema: FinancialQAOutputSchema,
   },
-  prompt: `You are a helpful financial assistant. Analyze the user's financial data provided below to answer their question accurately. Today's date is {{currentDate}}.
+  prompt: `You are a personal financial assistant. Your ONLY task is to answer the user's question based *strictly* and *exclusively* on the financial data provided below. Do NOT use any external knowledge or make assumptions. Today's date is {{currentDate}}.
 
 User's Question: {{{query}}}
 
-Financial Data:
+Financial Data Context:
 
 Accounts:
+{{#if accounts}}
 {{#each accounts}}
 - Name: {{name}}, Type: {{type}}, Balance: {{#if balance}}{{balance}}{{else}}N/A{{/if}}
 {{/each}}
+{{else}}
+(No account data provided)
+{{/if}}
 
 Expenses:
+{{#if expenses}}
 {{#each expenses}}
 - Date: {{date}}, Amount: {{amount}}, Category: {{category}}, Description: {{description}}
 {{/each}}
+{{else}}
+(No expense data provided)
+{{/if}}
 
 Income:
+{{#if income}}
 {{#each income}}
 - Date: {{date}}, Amount: {{amount}}, Source: {{source}}, Description: {{description}}
 {{/each}}
+{{else}}
+(No income data provided)
+{{/if}}
 
-Based *only* on the data provided above, answer the user's question. Be concise and clear. If the data doesn't contain the answer, state that you don't have the necessary information.
+Instructions:
+1.  Analyze the provided 'Financial Data Context' above.
+2.  Answer the 'User's Question' using *only* the information found in the context.
+3.  If the answer cannot be determined from the provided data, explicitly state that the necessary information is not available in the provided context.
+4.  Be concise and directly answer the question.
 
 Answer:`,
 } as any); // Type assertion to bypass potential schema inference issues
 
 // --- Flow Definition ---
-export const financialQAFlow = createFlow<
+// Use ai.defineFlow directly
+export const financialQAFlow = ai.defineFlow<
   typeof FinancialQAInputSchema,
   typeof FinancialQAOutputSchema
 >({

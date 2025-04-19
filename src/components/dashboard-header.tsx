@@ -195,6 +195,7 @@ export function DashboardHeader({ className, onSearch }: DashboardHeaderProps) {
             onFocus={() => setIsSearchFocused(true)}
             onBlur={() => setIsSearchFocused(false)}
             className="h-7 border-none shadow-none bg-transparent focus-visible:ring-0 placeholder:text-[#86868B] dark:placeholder:text-[#98989D] w-40 md:w-60 text-[#1D1D1F] dark:text-white"
+            suppressHydrationWarning={true} // Add suppressHydrationWarning
           />
           <AnimatePresence>
             {searchQuery && (

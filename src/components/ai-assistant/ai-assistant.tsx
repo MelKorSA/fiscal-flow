@@ -589,6 +589,7 @@ export function AIAssistant({ onQuerySubmit }: AIAssistantProps) {
                     onFocus={() => setIsFocused(true)}
                     onBlur={() => setIsFocused(false)}
                     className="border-0 bg-transparent focus-visible:ring-0 text-[#1D1D1F] dark:text:white placeholder:text-[#86868B] dark:placeholder:text-[#8E8E93] py-6 rounded-xl"
+                    suppressHydrationWarning={true} // Add suppressHydrationWarning
                   />
                   <motion.div
                     whileHover={{ scale: 1.05 }}
