@@ -321,7 +321,7 @@ function DashboardContent() {
         isOpen={isSearchModalOpen}
         onClose={closeSearchModal}
       />
-      <main ref={contentRef} className="flex-1 overflow-y-auto p-5 md:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+      <main ref={contentRef} className="flex-1 overflow-y-auto p-5 md:p-6 lg:p-8 w-full">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
           <div>
             <h1 className="text-3xl font-semibold text-[#1D1D1F] dark:text-white mb-1">

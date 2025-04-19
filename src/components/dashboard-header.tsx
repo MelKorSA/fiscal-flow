@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { ThemeToggle } from './theme-toggle'
-import { Activity, Bell, Search, X, BrainCircuit, Menu, Home } from 'lucide-react'
+import { Activity, Bell, Search, X, BrainCircuit, Menu, Home, Target } from 'lucide-react'
 import { gsap } from 'gsap'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
@@ -102,6 +102,7 @@ export function DashboardHeader({ className, onSearch }: DashboardHeaderProps) {
   // Navigation items
   const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: Home },
+    { href: '/zero-budget', label: 'Zero-Budget', icon: Target },
     { href: '/ai-assistant', label: 'AI Assistant', icon: BrainCircuit },
   ]
 

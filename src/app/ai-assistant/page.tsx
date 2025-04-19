@@ -149,7 +149,7 @@ export default function AIAssistantPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
-        className="flex-1 px-5 md:px-8 lg:px-12 py-8 max-w-7xl mx-auto w-full"
+        className="flex-1 px-5 md:px-8 lg:px-12 py-8 w-full"
       >
         <div className="flex flex-col items-center mb-10">
           <motion.h1
@@ -170,7 +170,7 @@ export default function AIAssistantPage() {
           </motion.p>
         </div>
 
-        <div className="max-w-4xl mx-auto w-full">
+        <div className="w-full">
           <AIAssistant onQuerySubmit={handleAIQuery} />
         </div>
 

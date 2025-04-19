@@ -344,7 +344,7 @@ export function CategorySelect({
       
       .category-dropdown {
         z-index: 9999;
-        position: absolute;
+        position: fixed;
       }
     `;
     document.head.appendChild(style);
@@ -491,23 +491,23 @@ export function CategorySelect({
               ref={dropdownRef}
               className="category-dropdown"
               style={{
-                position: 'absolute',
+                position: 'fixed', // Changed from 'absolute' to 'fixed'
                 top: `${dropdownPosition.top}px`,
                 left: `${dropdownPosition.left}px`,
                 width: '340px',
                 maxWidth: 'calc(100vw - 2rem)',
                 zIndex: 9999,
-                background: 'var(--bg-color, rgba(255, 255, 255, 0.95))',
+                // Use CSS variables for background/border for theme compatibility
+                background: 'var(--popover, hsl(var(--popover)))',
                 borderRadius: '0.75rem',
-                border: '1px solid var(--border-color, rgba(229, 229, 234, 1))',
-                padding: '0.75rem',
-                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
+                boxShadow: '0 10px 30px rgba(0, 0, 0, 0.1)',
+                border: '1px solid var(--border, hsl(var(--border)))',
                 backdropFilter: 'blur(10px)',
-                overflowY: 'auto',
+                WebkitBackdropFilter: 'blur(10px)', // For Safari
               }}
               variants={dropdownVariants}
               initial="hidden"
-              animate="visible"
+              animate={controls}
               exit="exit"
             >
               {/* Search box */}
