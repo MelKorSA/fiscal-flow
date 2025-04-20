@@ -19,7 +19,8 @@ import {
   Download,
   Upload,
   HelpCircle,
-  Trash2
+  Trash2,
+  DollarSign
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
@@ -983,6 +984,44 @@ export function FreelanceDashboard() {
             </Button>
             <Button variant="outline" onClick={loadSampleData}>
               Load Sample Data
+            </Button>
+          </div>
+        </div>
+      )}
+      
+      {/* Data Management Banner */}
+      {freelanceIncomes.length > 0 && (
+        <div className="bg-[#F9F9FB] dark:bg-[#28282A] rounded-xl p-4 mb-8 flex flex-col md:flex-row justify-between items-center">
+          <div className="flex items-center mb-3 md:mb-0">
+            <div className="p-2 rounded-full bg-[#EDF4FE] dark:bg-[#1C3049] mr-3">
+              <DollarSign className="h-5 w-5 text-[#007AFF] dark:text-[#0A84FF]" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-[#1D1D1F] dark:text:white">
+                {freelanceIncomes.length} Income {freelanceIncomes.length === 1 ? 'Entry' : 'Entries'} • ${totalIncome.toFixed(2)} Total
+              </h3>
+              <p className="text-xs text-[#86868B] dark:text-[#98989D]">
+                {clients.length} {clients.length === 1 ? 'Client' : 'Clients'} • {platforms.length} {platforms.length === 1 ? 'Platform' : 'Platforms'} • {totalHoursWorked.toFixed(1)} Hours
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="text-xs" onClick={() => setIsAddingIncome(true)}>
+              <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
+              Add Entry
+            </Button>
+            <Button variant="outline" size="sm" className="text-xs" onClick={exportData}>
+              <Download className="h-3.5 w-3.5 mr-1.5" />
+              Export
+            </Button>
+            <Button 
+              variant="destructive" 
+              size="sm" 
+              className="text-xs"
+              onClick={clearAllData}
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+              Clear All
             </Button>
           </div>
         </div>

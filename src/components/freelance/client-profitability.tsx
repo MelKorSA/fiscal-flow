@@ -138,6 +138,18 @@ export function ClientProfitability({ clients, incomes, onViewIncome }: ClientPr
         </div>
       </div>
 
+      <div className="p-4 bg-[#F9F9FB] dark:bg-[#28282A] rounded-lg text-xs">
+        <div className="flex items-start mb-3">
+          <Info className="h-4 w-4 text-[#007AFF] dark:text-[#0A84FF] mr-2 mt-0.5" />
+          <div>
+            <span className="font-medium text-[#1D1D1F] dark:text-white">Data Privacy Notice:</span>
+            <p className="mt-1 text-[#86868B] dark:text-[#98989D]">
+              All client data displayed here is securely managed and used solely for profitability analysis purposes.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-8">
           <Card className="border-0 shadow-sm bg-white/80 dark:bg-[#2C2C2E]/80 backdrop-blur-md rounded-2xl overflow-hidden">

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -28,7 +28,8 @@ import {
   Repeat,
   MonitorSmartphone,
   Building2,
-  Store
+  Store,
+  PlusCircle
 } from 'lucide-react';
 
 interface PassiveIncomeSuggestionsProps {
@@ -53,6 +54,75 @@ export function PassiveIncomeSuggestions({ incomes, skills }: PassiveIncomeSugge
   const [selectedIdea, setSelectedIdea] = useState<PassiveIncomeIdea | null>(null);
   const [filter, setFilter] = useState<'all' | 'product' | 'content' | 'service' | 'platform'>('all');
   const [effort, setEffort] = useState<'all' | 'low' | 'medium' | 'high'>('all');
+  
+  // New state for tracking implementation
+  const [trackedIdeas, setTrackedIdeas] = useState<Record<string, {
+    isTracking: boolean,
+    status: 'not-started' | 'in-progress' | 'completed',
+    notes: string
+  }>>({});
+
+  // Load tracked ideas from localStorage on component mount
+  useEffect(() => {
+    const loadTrackedIdeas = () => {
+      try {
+        const savedData = localStorage.getItem("freelance_passive_ideas");
+        if (savedData) {
+          setTrackedIdeas(JSON.parse(savedData));
+          return true;
+        }
+        return false;
+      } catch (error) {
+        console.error("Error loading tracked passive income ideas:", error);
+        return false;
+      }
+    };
+    
+    loadTrackedIdeas();
+  }, []);
+
+  // Save tracked ideas to localStorage whenever they change
+  useEffect(() => {
+    if (Object.keys(trackedIdeas).length > 0) {
+      try {
+        localStorage.setItem("freelance_passive_ideas", JSON.stringify(trackedIdeas));
+      } catch (error) {
+        console.error("Error saving tracked passive income ideas:", error);
+      }
+    }
+  }, [trackedIdeas]);
+
+  // Handle tracking status changes
+  const updateIdeaTracking = (
+    ideaId: string, 
+    field: 'isTracking' | 'status' | 'notes', 
+    value: boolean | string
+  ) => {
+    setTrackedIdeas(prev => {
+      const existing = prev[ideaId] || {
+        isTracking: false,
+        status: 'not-started',
+        notes: ''
+      };
+      
+      return {
+        ...prev,
+        [ideaId]: {
+          ...existing,
+          [field]: value
+        }
+      };
+    });
+  };
+
+  // Get tracking info for an idea
+  const getIdeaTracking = (ideaId: string) => {
+    return trackedIdeas[ideaId] || {
+      isTracking: false,
+      status: 'not-started' as const,
+      notes: ''
+    };
+  };
 
   // Generate suggestions based on existing skills and work
   const passiveIncomeIdeas = useMemo((): PassiveIncomeIdea[] => {
@@ -558,6 +628,108 @@ export function PassiveIncomeSuggestions({ incomes, skills }: PassiveIncomeSugge
                         <li>Create honest comparison content between alternatives</li>
                         <li>Offer bonuses to incentivize using your affiliate links</li>
                       </ul>
+                    )}
+                  </div>
+
+                  {/* Implementation Tracking */}
+                  <div className="border-t border-[#F2F2F7] dark:border-[#38383A] pt-4 mt-4">
+                    <h4 className="text-sm font-medium text-[#1D1D1F] dark:text-white mb-2 flex items-center justify-between">
+                      <span>Implementation Tracking</span>
+                      {getIdeaTracking(selectedIdea.id).isTracking && (
+                        <Badge className={
+                          getIdeaTracking(selectedIdea.id).status === 'completed' ? 'bg-[#E5F8EF] text-[#34C759]' :
+                          getIdeaTracking(selectedIdea.id).status === 'in-progress' ? 'bg-[#FEF4E8] text-[#FF9500]' :
+                          'bg-[#EDF4FE] text-[#007AFF]'
+                        }>
+                          {getIdeaTracking(selectedIdea.id).status === 'completed' ? 'Completed' :
+                           getIdeaTracking(selectedIdea.id).status === 'in-progress' ? 'In Progress' :
+                           'Not Started'}
+                        </Badge>
+                      )}
+                    </h4>
+                    
+                    {!getIdeaTracking(selectedIdea.id).isTracking ? (
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="w-full text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          updateIdeaTracking(selectedIdea.id, 'isTracking', true);
+                        }}
+                      >
+                        <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
+                        Track Implementation
+                      </Button>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="text-xs">
+                          <div className="flex justify-between mb-1">
+                            <label className="text-[#86868B] dark:text-[#98989D]">Status</label>
+                            <button 
+                              className="text-[#FF3B30] dark:text-[#FF453A] text-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm("Stop tracking this idea?")) {
+                                  updateIdeaTracking(selectedIdea.id, 'isTracking', false);
+                                }
+                              }}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            <Button 
+                              size="sm" 
+                              variant={getIdeaTracking(selectedIdea.id).status === 'not-started' ? 'default' : 'outline'}
+                              className="text-xs h-8 p-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateIdeaTracking(selectedIdea.id, 'status', 'not-started');
+                              }}
+                            >
+                              Not Started
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant={getIdeaTracking(selectedIdea.id).status === 'in-progress' ? 'default' : 'outline'}
+                              className="text-xs h-8 p-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateIdeaTracking(selectedIdea.id, 'status', 'in-progress');
+                              }}
+                            >
+                              In Progress
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant={getIdeaTracking(selectedIdea.id).status === 'completed' ? 'default' : 'outline'}
+                              className="text-xs h-8 p-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateIdeaTracking(selectedIdea.id, 'status', 'completed');
+                              }}
+                            >
+                              Completed
+                            </Button>
+                          </div>
+                        </div>
+                        
+                        <div className="text-xs">
+                          <label className="text-[#86868B] dark:text-[#98989D] block mb-1">Notes</label>
+                          <textarea 
+                            className="w-full p-2 rounded-md text-xs border border-[#E5E5EA] dark:border-[#38383A] bg-white dark:bg-[#2C2C2E] focus:ring-1 focus:ring-[#007AFF] dark:focus:ring-[#0A84FF]"
+                            rows={3}
+                            placeholder="Add implementation notes, links, or reminders..."
+                            value={getIdeaTracking(selectedIdea.id).notes}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              updateIdeaTracking(selectedIdea.id, 'notes', e.target.value);
+                            }}
+                          ></textarea>
+                        </div>
+                      </div>
                     )}
                   </div>
 
