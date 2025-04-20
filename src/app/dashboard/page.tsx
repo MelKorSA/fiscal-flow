@@ -23,7 +23,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { parseISO, isValid, format } from 'date-fns';
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
-import { availableExpenseCategoriesArray } from '@/config/expense-categories';
+import { availableMainCategoriesArray } from '@/config/expense-categories';
 import DashboardLoading from './loading';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -426,7 +426,7 @@ function DashboardContent() {
                   <TabsContent value="expense" className="space-y-4 mt-0">
                     <AddExpenseForm 
                       accounts={accounts} 
-                      categories={availableExpenseCategoriesArray}
+                      categories={availableMainCategoriesArray}
                       onAddExpense={handleAddExpense} 
                     />
                   </TabsContent>
@@ -440,7 +440,7 @@ function DashboardContent() {
                   <TabsContent value="recurring" className="space-y-4 mt-0">
                     <AddRecurringTransactionForm 
                       accounts={nonFdAccounts} 
-                      categories={availableExpenseCategoriesArray}
+                      categories={availableMainCategoriesArray}
                       incomeSources={availableIncomeSources}
                       onAddRecurringTransaction={() => {}}
                     />

@@ -110,7 +110,15 @@ export function DashboardHeader({ className, onSearch, title, description }: Das
     { href: '/ai-assistant', label: 'AI Assistant', icon: BrainCircuit },
   ]
 
-  const isActive = (path: string) => pathname === path
+  const isActive = (path: string) => {
+    // For exact matches
+    if (pathname === path) return true;
+    
+    // For nested routes (ensures the parent route shows as active)
+    if (path !== '/dashboard' && pathname.startsWith(path)) return true;
+    
+    return false;
+  }
 
   return (
     <header 

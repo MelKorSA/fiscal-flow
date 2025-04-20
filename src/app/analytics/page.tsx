@@ -5,7 +5,8 @@ import { DashboardHeader } from '@/components/dashboard-header';
 import { AISpendingInsights } from '@/components/ai-spending-insights';
 import { PredictiveCashFlow } from '@/components/predictive-cash-flow';
 import { FinancialHealthScore } from '@/components/financial-health-score';
-import { MerchantAnalytics } from '@/components/merchant-analytics'; // Import MerchantAnalytics
+import { MerchantAnalytics } from '@/components/merchant-analytics';
+import { WhatIfScenarios } from '@/components/what-if-scenarios'; // Import What-If Scenarios component
 import { Skeleton } from '@/components/ui/skeleton';
 
 // Placeholder data fetching function - replace with your actual data fetching logic
@@ -89,7 +90,8 @@ export default function AnalyticsPage() {
       balance: data.currentBalance,
       savingsAmount,
       debtAmount,
-      recurringExpenses
+      recurringExpenses,
+      recurringTransactionsList: data.recurringTransactions
     };
   };
   
@@ -109,6 +111,8 @@ export default function AnalyticsPage() {
             <Skeleton className="h-[320px] rounded-2xl" />
             {/* Merchant Analytics skeleton - spans full width */}
             <Skeleton className="h-[320px] rounded-2xl md:col-span-2 lg:col-span-3" />
+            {/* What-If Scenarios skeleton - spans full width */}
+            <Skeleton className="h-[400px] rounded-2xl md:col-span-2 lg:col-span-3" />
           </div>
         ) : data ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -130,10 +134,22 @@ export default function AnalyticsPage() {
               />
             )}
             
-            {/* Add Merchant Analytics - spans full width on larger screens */}
+            {/* Merchant Analytics - spans full width on larger screens */}
             <div className="md:col-span-2 lg:col-span-3">
               <MerchantAnalytics expenses={data.expenses} />
             </div>
+            
+            {/* What-If Scenarios - spans full width on larger screens */}
+            {healthScoreProps && (
+              <div className="md:col-span-2 lg:col-span-3 mt-2">
+                <WhatIfScenarios
+                  currentIncome={healthScoreProps.income}
+                  currentExpenses={healthScoreProps.expenses}
+                  currentSavings={healthScoreProps.balance}
+                  recurringExpenses={healthScoreProps.recurringTransactionsList}
+                />
+              </div>
+            )}
           </div>
         ) : (
           <p className="text-center text-gray-500">Could not load analytics data.</p>
