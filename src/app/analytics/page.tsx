@@ -1,10 +1,11 @@
 'use client';
 
 import React from 'react';
-import { DashboardHeader } from '@/components/dashboard-header'; // Import DashboardHeader
+import { DashboardHeader } from '@/components/dashboard-header'; 
 import { AISpendingInsights } from '@/components/ai-spending-insights';
 import { PredictiveCashFlow } from '@/components/predictive-cash-flow';
-import { Skeleton } from '@/components/ui/skeleton'; // For loading state
+import { FinancialHealthScore } from '@/components/financial-health-score'; // Import the new component
+import { Skeleton } from '@/components/ui/skeleton';
 
 // Placeholder data fetching function - replace with your actual data fetching logic
 async function getAnalyticsData() {
@@ -15,8 +16,10 @@ async function getAnalyticsData() {
   const expenses = [
     { id: '1', accountId: 'a1', amount: 50, category: 'Food', date: new Date(2025, 3, 15), description: 'Lunch' },
     { id: '2', accountId: 'a1', amount: 120, category: 'Transport', date: new Date(2025, 3, 10), description: 'Gas' },
-    { id: '3', accountId: 'a2', amount: 800, category: 'Rent', date: new Date(2025, 3, 1), description: 'Monthly Rent' },
+    { id: '3', accountId: 'a2', amount: 800, category: 'Housing', date: new Date(2025, 3, 1), description: 'Monthly Rent' },
     { id: '4', accountId: 'a1', amount: 30, category: 'Entertainment', date: new Date(2025, 2, 20), description: 'Movie' },
+    { id: '5', accountId: 'a2', amount: 150, category: 'Debt Repayment', date: new Date(2025, 3, 5), description: 'Credit Card' },
+    { id: '6', accountId: 'a1', amount: 200, category: 'Savings', date: new Date(2025, 3, 2), description: 'Monthly Savings' },
   ];
   const income = [
     { id: 'i1', accountId: 'a1', amount: 2500, source: 'Salary', date: new Date(2025, 3, 1), description: 'April Salary' },
@@ -26,7 +29,9 @@ async function getAnalyticsData() {
   const recurringTransactions = [
     { frequency: 'monthly', amount: 800, type: 'expense', startDate: new Date(2024, 0, 1), dayOfMonth: 1, description: 'Rent' },
     { frequency: 'monthly', amount: 2500, type: 'income', startDate: new Date(2024, 0, 1), dayOfMonth: 1, description: 'Salary' },
-    { frequency: 'weekly', amount: 50, type: 'expense', startDate: new Date(2024, 0, 1), dayOfWeek: 5, description: 'Groceries' }, // Friday
+    { frequency: 'weekly', amount: 50, type: 'expense', startDate: new Date(2024, 0, 1), dayOfWeek: 5, description: 'Groceries' },
+    { frequency: 'monthly', amount: 200, type: 'expense', startDate: new Date(2024, 0, 1), dayOfMonth: 2, description: 'Savings' },
+    { frequency: 'monthly', amount: 150, type: 'expense', startDate: new Date(2024, 0, 1), dayOfMonth: 5, description: 'Debt Repayment' },
   ];
 
   return { expenses, income, currentBalance, recurringTransactions };
@@ -46,6 +51,44 @@ export default function AnalyticsPage() {
     fetchData();
   }, []);
 
+  // Calculate derived values for financial health score
+  const calculateDerivedValues = () => {
+    if (!data) return null;
+    
+    // Calculate total income
+    const totalIncome = data.income.reduce((sum: number, item: any) => sum + item.amount, 0);
+    
+    // Calculate total expenses
+    const totalExpenses = data.expenses.reduce((sum: number, item: any) => sum + item.amount, 0);
+    
+    // Extract savings amount (simplified: any expense with category 'Savings')
+    const savingsAmount = data.expenses
+      .filter((expense: any) => expense.category === 'Savings')
+      .reduce((sum: number, item: any) => sum + item.amount, 0);
+    
+    // Extract debt amount (simplified: any expense with category containing 'Debt')
+    const debtAmount = data.expenses
+      .filter((expense: any) => expense.category.includes('Debt'))
+      .reduce((sum: number, item: any) => sum + item.amount, 0);
+    
+    // Calculate recurring expenses total
+    const recurringExpenses = data.recurringTransactions
+      .filter((item: any) => item.type === 'expense')
+      .reduce((sum: number, item: any) => sum + item.amount, 0);
+    
+    return {
+      income: totalIncome,
+      expenses: totalExpenses,
+      balance: data.currentBalance,
+      savingsAmount,
+      debtAmount,
+      recurringExpenses
+    };
+  };
+  
+  // Get derived values
+  const healthScoreProps = data ? calculateDerivedValues() : null;
+
   return (
     <div className="flex flex-col min-h-screen bg-[#F5F5F7] dark:bg-[#1A1A1A]">
       <DashboardHeader /> {/* Add DashboardHeader here */}
@@ -53,19 +96,30 @@ export default function AnalyticsPage() {
         <h1 className="text-2xl font-semibold text-[#1D1D1F] dark:text-white mb-6">Analytics Dashboard</h1>
 
         {loading ? (
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <Skeleton className="h-[320px] rounded-2xl" />
             <Skeleton className="h-[320px] rounded-2xl" />
             <Skeleton className="h-[320px] rounded-2xl" />
           </div>
         ) : data ? (
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             <AISpendingInsights expenses={data.expenses} income={data.income} />
             <PredictiveCashFlow
               currentBalance={data.currentBalance}
-              transactions={[...data.expenses, ...data.income]} // Combine for potential baseline analysis
+              transactions={[...data.expenses.map((e: any) => ({...e, type: 'expense'})), 
+                             ...data.income.map((i: any) => ({...i, type: 'income'}))]} 
               recurringTransactions={data.recurringTransactions}
             />
-            {/* Add more analytics components here */}
+            {healthScoreProps && (
+              <FinancialHealthScore 
+                income={healthScoreProps.income}
+                expenses={healthScoreProps.expenses}
+                balance={healthScoreProps.balance}
+                savingsAmount={healthScoreProps.savingsAmount}
+                debtAmount={healthScoreProps.debtAmount}
+                recurringExpenses={healthScoreProps.recurringExpenses}
+              />
+            )}
           </div>
         ) : (
           <p className="text-center text-gray-500">Could not load analytics data.</p>
