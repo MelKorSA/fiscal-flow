@@ -21,9 +21,10 @@ import { toast } from "sonner";
 import { gsap } from 'gsap';
 import { cn } from '@/lib/utils';
 import { 
-  availableExpenseCategoriesArray, 
+  availableMainCategoriesArray, 
   getExpenseCategoryDetails,
-  MainExpenseCategory
+  MainExpenseCategory,
+  getFlatCategoryOptions
 } from '@/config/expense-categories';
 import { 
   Select, 
@@ -42,6 +43,7 @@ import {
   AlertDialogHeader, 
   AlertDialogTitle 
 } from "@/components/ui/alert-dialog";
+import { CategorySelect } from '@/components/ui/category-select';
 
 // Local storage keys
 const LS_KEYS = {
@@ -363,7 +365,7 @@ export default function ZeroBudgetPage() {
     const template = budgetTemplates[templateKey];
     const newAllocations: BudgetAllocation[] = template.allocations
       .map((alloc: TemplateAllocation, index: number) => { // Add types for alloc and index
-        const categoryExists = availableExpenseCategoriesArray.includes(alloc.category as MainExpenseCategory);
+        const categoryExists = availableMainCategoriesArray.includes(alloc.category as MainExpenseCategory);
         if (!categoryExists) {
           console.warn(`Template category "${alloc.category}" not found in available categories. Skipping.`);
           return null;
@@ -393,7 +395,7 @@ export default function ZeroBudgetPage() {
       if (miscIndex !== -1) {
         newAllocations[miscIndex].amount += remainder;
         newAllocations[miscIndex].percentage = (newAllocations[miscIndex].amount / income) * 100;
-      } else if (availableExpenseCategoriesArray.includes(miscCategory as MainExpenseCategory)) {
+      } else if (availableMainCategoriesArray.includes(miscCategory as MainExpenseCategory)) {
          const categoryDetails = getExpenseCategoryDetails(miscCategory as MainExpenseCategory);
          const colorHex = categoryDetails.color.includes('text-') ? categoryDetails.color.replace('text-', 'bg-') : categoryDetails.color;
          newAllocations.push({
@@ -691,20 +693,12 @@ export default function ZeroBudgetPage() {
                   <form onSubmit={handleAddAllocation} className="grid grid-cols-1 md:grid-cols-7 gap-3">
                     <div className="md:col-span-3">
                       <Label htmlFor="category" className="sr-only">Category</Label>
-                      <select
-                        id="category"
-                        value={newCategory}
-                        onChange={(e) => setNewCategory(e.target.value)}
-                        className="w-full h-9 px-3 py-2 bg:white dark:bg-[#3A3A3C] rounded-lg text-[#1D1D1F] dark:text:white border border-[#E5E5EA] dark:border-[#48484A] focus:ring-[#007AFF] dark:focus:ring-[#0A84FF] focus:border-[#007AFF] dark:focus:border-[#0A84FF] outline-none"
-                        required
-                      >
-                        <option value="">Select category</option>
-                        {availableExpenseCategoriesArray.map((category, index) => (
-                          <option key={`${category}-${index}`} value={category}>
-                            {category}
-                          </option>
-                        ))}
-                      </select>
+                      <CategorySelect 
+                        value={newCategory} 
+                        onValueChange={setNewCategory} 
+                        placeholder="Select category"
+                        required={true}
+                      />
                     </div>
                     
                     <div className="md:col-span-2">
