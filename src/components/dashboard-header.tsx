@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { ThemeToggle } from './theme-toggle'
-import { Activity, Bell, Search, X, BrainCircuit, Menu, Home, Target, LineChart, CreditCard } from 'lucide-react' // Added CreditCard
+import { Activity, Bell, Search, X, BrainCircuit, Menu, Home, Target, LineChart, CreditCard, Briefcase } from 'lucide-react' // Added Briefcase icon
 import { gsap } from 'gsap'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
@@ -106,7 +106,8 @@ export function DashboardHeader({ className, onSearch, title, description }: Das
     { href: '/dashboard', label: 'Dashboard', icon: Home },
     { href: '/zero-budget', label: 'Zero-Budget', icon: Target },
     { href: '/analytics', label: 'Analytics', icon: LineChart },
-    { href: '/debt-management', label: 'Debt Management', icon: CreditCard }, // Added Debt Management item
+    { href: '/debt-management', label: 'Debt Management', icon: CreditCard },
+    { href: '/freelance', label: 'Freelance Income', icon: Briefcase }, // Added Freelance Income item
     { href: '/ai-assistant', label: 'AI Assistant', icon: BrainCircuit },
   ]
 
