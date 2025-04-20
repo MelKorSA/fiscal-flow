@@ -6,8 +6,10 @@ import { AISpendingInsights } from '@/components/ai-spending-insights';
 import { PredictiveCashFlow } from '@/components/predictive-cash-flow';
 import { FinancialHealthScore } from '@/components/financial-health-score';
 import { MerchantAnalytics } from '@/components/merchant-analytics';
-import { WhatIfScenarios } from '@/components/what-if-scenarios'; // Import What-If Scenarios component
+import { WhatIfScenarios } from '@/components/what-if-scenarios';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageFeatureGuide } from '@/components/page-feature-guide';
+import { TrendingUp, PieChart, BarChart3, CreditCard, Lightbulb } from 'lucide-react';
 
 // Placeholder data fetching function - replace with your actual data fetching logic
 async function getAnalyticsData() {
@@ -98,11 +100,48 @@ export default function AnalyticsPage() {
   // Get derived values
   const healthScoreProps = data ? calculateDerivedValues() : null;
 
+  // Define analytics features for the guide
+  // Assuming PageFeatureGuide expects the component type for the icon
+  const analyticsFeatures = [
+    {
+      title: "AI Spending Insights",
+      description: "Get AI-powered analysis of your spending patterns and personalized recommendations.",
+      icon: PieChart // Pass the component type
+    },
+    {
+      title: "Predictive Cash Flow",
+      description: "View future cash flow projections based on your recurring transactions and spending habits.",
+      icon: TrendingUp // Pass the component type
+    },
+    {
+      title: "Financial Health Score",
+      description: "Track your overall financial health with a comprehensive score and improvement tips.",
+      icon: BarChart3 // Pass the component type
+    },
+    {
+      title: "Merchant Analytics",
+      description: "See where you spend the most and identify trends across different merchants.",
+      icon: CreditCard // Pass the component type
+    },
+    {
+      title: "What-If Scenarios",
+      description: "Simulate financial decisions and see how they impact your long-term financial health.",
+      icon: Lightbulb // Pass the component type
+    }
+  ];
+
   return (
     <div className="flex flex-col min-h-screen bg-[#F5F5F7] dark:bg-[#1A1A1A]">
-      <DashboardHeader /> {/* Add DashboardHeader here */}
+      <DashboardHeader />
       <main className="flex-1 overflow-y-auto p-4 md:p-6">
         <h1 className="text-2xl font-semibold text-[#1D1D1F] dark:text-white mb-6">Analytics Dashboard</h1>
+
+        {/* Page Feature Guide */}
+        <PageFeatureGuide
+          title="Financial Analytics"
+          description="Get deeper insights into your financial health with AI-powered analytics and predictive tools."
+          features={analyticsFeatures}
+        />
 
         {loading ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
