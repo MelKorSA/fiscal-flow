@@ -9,18 +9,22 @@ import {
 } from "@/components/ui/chart";
 import {
   Building2, ShoppingBag, TrendingUp, ChevronsUpDown, Store, Zap, ChevronRight, ChevronDown,
-  EqualSquare as CompareIcon
+  EqualSquare as CompareIcon, Calendar, Filter
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip as RechartsTooltip,
   Legend, Cell
 } from 'recharts';
-import { format, parseISO, isValid } from 'date-fns';
+import { format, parseISO, isValid, subDays, subMonths, subYears, isWithinInterval, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { gsap } from 'gsap';
 import { ScrollArea } from './ui/scroll-area';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { DateRange } from 'react-day-picker';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
 
 // Types
 type Expense = {
@@ -31,6 +35,9 @@ interface MerchantAnalyticsProps {
   expenses: Expense[];
 }
 
+// Time period types
+type TimePeriod = '7d' | '30d' | '90d' | '6m' | '1y' | 'ytd' | 'custom';
+
 export function MerchantAnalytics({ expenses }: MerchantAnalyticsProps) {
   const [expanded, setExpanded] = useState<boolean>(false);
   const [sortType, setSortType] = useState<'amount' | 'frequency'>('amount');
@@ -40,6 +47,9 @@ export function MerchantAnalytics({ expenses }: MerchantAnalyticsProps) {
   const [showMerchantInput, setShowMerchantInput] = useState<boolean>(false);
   const [manualMerchant, setManualMerchant] = useState<string>('');
   const [manualCategory, setManualCategory] = useState<string>('');
+  const [selectedTimePeriod, setSelectedTimePeriod] = useState<TimePeriod>('30d');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   // Store the showGuide state in localStorage to only show it on first use
   useEffect(() => {
@@ -57,9 +67,35 @@ export function MerchantAnalytics({ expenses }: MerchantAnalyticsProps) {
   const barChartRef = useRef<HTMLDivElement>(null);
   const comparisonRef = useRef<HTMLDivElement>(null);
 
+  // Get date range based on selected time period
+  const getDateRangeFromPeriod = (period: TimePeriod): [Date, Date] => {
+    const today = new Date();
+    
+    switch (period) {
+      case '7d':
+        return [subDays(today, 7), today];
+      case '30d':
+        return [subDays(today, 30), today];
+      case '90d':
+        return [subDays(today, 90), today];
+      case '6m':
+        return [subMonths(today, 6), today];
+      case '1y':
+        return [subYears(today, 1), today];
+      case 'ytd':
+        return [startOfYear(today), today];
+      case 'custom':
+        return dateRange ? [dateRange.from as Date, dateRange.to as Date] : [subDays(today, 30), today];
+      default:
+        return [subDays(today, 30), today];
+    }
+  };
+
   // Process merchants and their transactions
   const merchantData = useMemo(() => {
     if (expenses.length === 0) return [];
+    
+    const [startDate, endDate] = getDateRangeFromPeriod(selectedTimePeriod);
     
     const merchantMap = new Map<string, {
       merchant: string;
@@ -80,7 +116,7 @@ export function MerchantAnalytics({ expenses }: MerchantAnalyticsProps) {
       // Clean up merchant name
       merchant = merchant.trim();
       if (merchant === '') merchant = 'Unknown';
-      
+
       // Convert date to Date object if it's not already
       let expenseDate: Date;
       if (expense.date instanceof Date) {
@@ -90,6 +126,16 @@ export function MerchantAnalytics({ expenses }: MerchantAnalyticsProps) {
         if (!isValid(expenseDate)) expenseDate = new Date();
       } else {
         expenseDate = new Date();
+      }
+
+      // Filter by date range
+      if (!isWithinInterval(expenseDate, { start: startDate, end: endDate })) {
+        return;
+      }
+
+      // Filter by category if one is selected
+      if (selectedCategory && expense.category !== selectedCategory) {
+        return;
       }
 
       // Update merchant data
@@ -128,7 +174,7 @@ export function MerchantAnalytics({ expenses }: MerchantAnalyticsProps) {
 
     // Sort by total amount spent
     return result.sort((a, b) => b.totalSpent - a.totalSpent);
-  }, [expenses]);
+  }, [expenses, selectedTimePeriod, dateRange, selectedCategory]);
 
   // Top merchants (limited to 10 for display)
   const topMerchants = useMemo(() => {
@@ -139,7 +185,18 @@ export function MerchantAnalytics({ expenses }: MerchantAnalyticsProps) {
     }
   }, [merchantData, sortType]);
 
-  // Generate merchant comparison data (simplified simulation for demo)
+  // Extract all unique categories
+  const allCategories = useMemo(() => {
+    const categories = new Set<string>();
+    merchantData.forEach(merchant => {
+      Array.from(merchant.categories.keys()).forEach(category => {
+        categories.add(category);
+      });
+    });
+    return Array.from(categories).sort();
+  }, [merchantData]);
+
+  // Generate merchant comparison data with category filtering
   const comparisonData = useMemo(() => {
     if (!selectedMerchant) return null;
     
@@ -149,12 +206,17 @@ export function MerchantAnalytics({ expenses }: MerchantAnalyticsProps) {
     // Get merchant's categories
     const categories = Array.from(merchant.categories.keys());
     
-    // Find similar merchants based on common categories
+    // Find similar merchants based on common categories or selected category
     const similarMerchants = merchantData.filter(m => {
       if (m.merchant === selectedMerchant) return false;
       
-      // Check if there's category overlap
+      // Check if there's category overlap or if we're filtering by a specific category
       const merchantCategories = Array.from(m.categories.keys());
+      
+      if (selectedCategory) {
+        return merchantCategories.includes(selectedCategory) && categories.includes(selectedCategory);
+      }
+      
       return categories.some(category => merchantCategories.includes(category));
     }).slice(0, 3); // Limit to top 3 similar merchants
 
@@ -162,15 +224,32 @@ export function MerchantAnalytics({ expenses }: MerchantAnalyticsProps) {
     const result = {
       merchant: selectedMerchant,
       avgAmount: merchant.avgAmount,
-      similarMerchants: similarMerchants.map(m => ({
-        name: m.merchant,
-        avgAmount: m.avgAmount,
-        priceDiff: ((m.avgAmount - merchant.avgAmount) / merchant.avgAmount * 100).toFixed(1)
-      }))
+      similarMerchants: similarMerchants.map(m => {
+        // Calculate price difference based on the selected category or overall
+        let thisMerchantAmount = merchant.avgAmount;
+        let otherMerchantAmount = m.avgAmount;
+        
+        // If we're comparing by category, use the category-specific amounts
+        if (selectedCategory) {
+          const thisCategoryAmount = merchant.categories.get(selectedCategory) || 0;
+          const thisTransactions = merchant.dates.length;
+          thisMerchantAmount = thisCategoryAmount / thisTransactions;
+          
+          const otherCategoryAmount = m.categories.get(selectedCategory) || 0;
+          const otherTransactions = m.dates.length;
+          otherMerchantAmount = otherCategoryAmount / otherTransactions;
+        }
+        
+        return {
+          name: m.merchant,
+          avgAmount: otherMerchantAmount,
+          priceDiff: ((otherMerchantAmount - thisMerchantAmount) / thisMerchantAmount * 100).toFixed(1)
+        };
+      })
     };
 
     return result;
-  }, [selectedMerchant, merchantData]);
+  }, [selectedMerchant, merchantData, selectedCategory]);
 
   // Simulate price insight for specific merchant
   const priceInsight = useMemo(() => {
@@ -180,23 +259,25 @@ export function MerchantAnalytics({ expenses }: MerchantAnalyticsProps) {
     const lowerPriced = comparisonData.similarMerchants.filter(m => parseFloat(m.priceDiff) < 0);
     const higherPriced = comparisonData.similarMerchants.filter(m => parseFloat(m.priceDiff) > 0);
     
+    const categoryText = selectedCategory ? ` for ${selectedCategory}` : '';
+    
     if (lowerPriced.length > higherPriced.length) {
       return {
-        text: `${comparisonData.merchant} is generally more expensive than similar merchants.`,
+        text: `${comparisonData.merchant} is generally more expensive${categoryText} than similar merchants.`,
         type: 'negative'
       };
     } else if (higherPriced.length > lowerPriced.length) {
       return {
-        text: `${comparisonData.merchant} offers good value compared to similar merchants.`,
+        text: `${comparisonData.merchant} offers good value${categoryText} compared to similar merchants.`,
         type: 'positive'
       };
     } else {
       return {
-        text: `${comparisonData.merchant} prices are average compared to similar merchants.`,
+        text: `${comparisonData.merchant} prices${categoryText} are average compared to similar merchants.`,
         type: 'neutral'
       };
     }
-  }, [comparisonData]);
+  }, [comparisonData, selectedCategory]);
 
   // Prepare chart data
   const chartData = useMemo(() => {
@@ -223,6 +304,19 @@ export function MerchantAnalytics({ expenses }: MerchantAnalyticsProps) {
   const handleMerchantSelect = (merchant: string) => {
     setSelectedMerchant(merchant === selectedMerchant ? null : merchant);
     setShowComparison(merchant !== selectedMerchant);
+  };
+
+  // Handle time period selection
+  const handleTimePeriodChange = (period: TimePeriod) => {
+    setSelectedTimePeriod(period);
+  };
+
+  // Handle date range change for custom period
+  const handleDateRangeChange = (range: DateRange | undefined) => {
+    if (range) {
+      setDateRange(range);
+      setSelectedTimePeriod('custom');
+    }
   };
 
   return (
@@ -340,6 +434,82 @@ export function MerchantAnalytics({ expenses }: MerchantAnalyticsProps) {
               </div>
             </div>
           )}
+        </div>
+
+        {/* Time Period Selection and Category Filter */}
+        <div className="px-4 pb-3 flex items-center gap-2">
+          <Select
+            value={selectedTimePeriod}
+            onValueChange={(value) => handleTimePeriodChange(value as TimePeriod)}
+          >
+            <SelectTrigger className="h-8 text-xs w-[110px]">
+              <div className="flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5" />
+                <span>
+                  {selectedTimePeriod === '7d' ? '7 days' : 
+                   selectedTimePeriod === '30d' ? '30 days' : 
+                   selectedTimePeriod === '90d' ? '90 days' : 
+                   selectedTimePeriod === '6m' ? '6 months' : 
+                   selectedTimePeriod === '1y' ? '1 year' : 
+                   selectedTimePeriod === 'ytd' ? 'Year to date' : 
+                   'Custom'}
+                </span>
+              </div>
+            </SelectTrigger>
+            <SelectContent className="min-w-[150px]">
+              <SelectItem value="7d">Last 7 days</SelectItem>
+              <SelectItem value="30d">Last 30 days</SelectItem>
+              <SelectItem value="90d">Last 90 days</SelectItem>
+              <SelectItem value="6m">Last 6 months</SelectItem>
+              <SelectItem value="1y">Last year</SelectItem>
+              <SelectItem value="ytd">Year to date</SelectItem>
+              <SelectItem value="custom">Custom range</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {selectedTimePeriod === 'custom' && (
+            <div className="flex-1">
+              <DateRangePicker
+                value={dateRange}
+                onChange={handleDateRangeChange}
+                classNames={{
+                  trigger: "h-8 text-xs",
+                }}
+              />
+            </div>
+          )}
+          
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 px-2 text-xs">
+                <Filter className="h-3.5 w-3.5 mr-1" />
+                {selectedCategory ? selectedCategory : "All Categories"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[200px] p-2" align="end">
+              <div className="space-y-1">
+                <Button 
+                  variant={selectedCategory === null ? "default" : "outline"}
+                  size="sm"
+                  className="w-full justify-start text-xs h-7"
+                  onClick={() => setSelectedCategory(null)}
+                >
+                  All Categories
+                </Button>
+                {allCategories.map(category => (
+                  <Button
+                    key={category}
+                    variant={selectedCategory === category ? "default" : "outline"}
+                    size="sm"
+                    className="w-full justify-start text-xs h-7"
+                    onClick={() => setSelectedCategory(category)}
+                  >
+                    {category}
+                  </Button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
 
         <div className="px-4 pb-2 flex items-center justify-between">
@@ -465,7 +635,7 @@ export function MerchantAnalytics({ expenses }: MerchantAnalyticsProps) {
                   <div className="flex items-center gap-2">
                     <CompareIcon className="h-4 w-4 text-[#007AFF] dark:text-[#0A84FF]" />
                     <h3 className="text-sm font-medium text-[#1D1D1F] dark:text-white">
-                      Price Comparison
+                      {selectedCategory ? `${selectedCategory} Price Comparison` : 'Price Comparison'}
                     </h3>
                   </div>
                   <Badge 
@@ -486,7 +656,7 @@ export function MerchantAnalytics({ expenses }: MerchantAnalyticsProps) {
                 </p>
 
                 <h4 className="text-xs font-medium text-[#8E8E93] dark:text-[#98989D] mb-2">
-                  Similar Merchants
+                  {selectedCategory ? `Similar Merchants (${selectedCategory})` : 'Similar Merchants'}
                 </h4>
                 
                 <ScrollArea className="max-h-40">
@@ -502,7 +672,6 @@ export function MerchantAnalytics({ expenses }: MerchantAnalyticsProps) {
                             {merchant.name}
                           </span>
                         </div>
-                        
                         <div className="flex items-center gap-2">
                           <span className="text-xs text-[#8E8E93] dark:text-[#98989D]">
                             ${merchant.avgAmount.toFixed(2)} avg
