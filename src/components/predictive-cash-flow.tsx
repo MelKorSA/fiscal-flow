@@ -11,7 +11,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend
 } from 'recharts';
 import { TrendingUp } from 'lucide-react';
-import { addDays, format, startOfDay } from 'date-fns';
+import { addDays, format, startOfDay, differenceInDays, parseISO } from 'date-fns';
 
 // Placeholder types - replace with actual data types if available
 type Transaction = {
@@ -32,7 +32,7 @@ type RecurringTransaction = {
 
 interface PredictiveCashFlowProps {
   currentBalance: number;
-  transactions: Transaction[]; // Recent transactions for baseline
+  transactions: Transaction[]; // Recent transactions for baseline (past data)
   recurringTransactions: RecurringTransaction[];
 }
 
@@ -46,18 +46,44 @@ export function PredictiveCashFlow({ currentBalance, transactions, recurringTran
     const today = startOfDay(new Date());
     let balance = currentBalance;
 
+    // --- Enhanced Prediction Logic ---
+    // 1. Calculate average daily net flow from historical transactions (excluding today)
+    let totalNetFlow = 0;
+    let daysOfHistory = 0;
+    const historicalTransactions = transactions
+      .map(t => ({ ...t, date: startOfDay(typeof t.date === 'string' ? parseISO(t.date) : t.date) })) // Ensure date objects and start of day
+      .filter(t => t.date < today) // Only use past transactions
+      .sort((a, b) => a.date.getTime() - b.date.getTime()); // Sort by date
+
+    if (historicalTransactions.length > 0) {
+      const firstDate = historicalTransactions[0].date;
+      daysOfHistory = differenceInDays(today, firstDate);
+
+      historicalTransactions.forEach(t => {
+        totalNetFlow += t.type === 'income' ? t.amount : -t.amount;
+      });
+    }
+
+    // Avoid division by zero, default to 0 if no history or only 1 day
+    const averageDailyNetFlow = daysOfHistory > 0 ? totalNetFlow / daysOfHistory : 0;
+    // --- End of Historical Analysis ---
+
+
     // Add today's balance
     data.push({ date: format(today, 'MMM d'), balance: parseFloat(balance.toFixed(2)) });
 
+    // Project for the next 90 days
     for (let i = 1; i <= 90; i++) {
       const currentDate = addDays(today, i);
       let dailyIncome = 0;
       let dailyExpense = 0;
 
-      // Simple projection based on recurring transactions (can be improved)
+      // 2. Add recurring transactions for the current projection day
       recurringTransactions.forEach(rt => {
-        const rtStartDate = new Date(rt.startDate);
-        const rtEndDate = rt.endDate ? new Date(rt.endDate) : null;
+        // Ensure dates are Date objects
+        const rtStartDate = startOfDay(typeof rt.startDate === 'string' ? parseISO(rt.startDate) : rt.startDate);
+        const rtEndDate = rt.endDate ? startOfDay(typeof rt.endDate === 'string' ? parseISO(rt.endDate) : rt.endDate) : null;
+
 
         if (currentDate >= rtStartDate && (!rtEndDate || currentDate <= rtEndDate)) {
           let occursToday = false;
@@ -66,7 +92,9 @@ export function PredictiveCashFlow({ currentBalance, transactions, recurringTran
               occursToday = true;
               break;
             case 'weekly':
-              if (currentDate.getDay() === (rt.dayOfWeek ?? 1)) occursToday = true; // Default to Monday if not specified
+              // date-fns getDay: 0 (Sun) - 6 (Sat), adjust if dayOfWeek is 1-7
+              const dayOfWeek = rt.dayOfWeek ? (rt.dayOfWeek % 7) : 1; // Assuming 1=Mon...7=Sun -> 1...6, 0
+              if (currentDate.getDay() === dayOfWeek) occursToday = true;
               break;
             case 'monthly':
               if (currentDate.getDate() === (rt.dayOfMonth ?? 1)) occursToday = true; // Default to 1st if not specified
@@ -81,12 +109,14 @@ export function PredictiveCashFlow({ currentBalance, transactions, recurringTran
         }
       });
 
-      balance += dailyIncome - dailyExpense;
+      // 3. Apply recurring transactions AND the average daily net flow from history
+      balance += dailyIncome - dailyExpense + averageDailyNetFlow;
       data.push({ date: format(currentDate, 'MMM d'), balance: parseFloat(balance.toFixed(2)) });
     }
 
     return data;
-  }, [currentBalance, recurringTransactions]); // Add transactions dependency if using it for projection
+    // Ensure transactions is included in dependencies for recalculation
+  }, [currentBalance, transactions, recurringTransactions]);
 
   const chartConfig = {
     balance: { label: "Projected Balance", color: AREA_COLORS.projection },
@@ -104,7 +134,7 @@ export function PredictiveCashFlow({ currentBalance, transactions, recurringTran
           </CardTitle>
         </div>
         <CardDescription className="text-xs text-[#8E8E93] dark:text-[#98989D] mt-1">
-          Estimated cash balance based on recurring transactions.
+          Estimated cash balance based on recurring and historical transaction trends.
         </CardDescription>
       </CardHeader>
       <CardContent className="p-0 py-4 transition-all duration-300">
