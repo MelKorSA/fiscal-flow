@@ -4,7 +4,8 @@ import React from 'react';
 import { DashboardHeader } from '@/components/dashboard-header'; 
 import { AISpendingInsights } from '@/components/ai-spending-insights';
 import { PredictiveCashFlow } from '@/components/predictive-cash-flow';
-import { FinancialHealthScore } from '@/components/financial-health-score'; // Import the new component
+import { FinancialHealthScore } from '@/components/financial-health-score';
+import { MerchantAnalytics } from '@/components/merchant-analytics'; // Import MerchantAnalytics
 import { Skeleton } from '@/components/ui/skeleton';
 
 // Placeholder data fetching function - replace with your actual data fetching logic
@@ -14,12 +15,18 @@ async function getAnalyticsData() {
 
   // Replace with actual API calls to fetch expenses, income, balance, recurring transactions
   const expenses = [
-    { id: '1', accountId: 'a1', amount: 50, category: 'Food', date: new Date(2025, 3, 15), description: 'Lunch' },
-    { id: '2', accountId: 'a1', amount: 120, category: 'Transport', date: new Date(2025, 3, 10), description: 'Gas' },
-    { id: '3', accountId: 'a2', amount: 800, category: 'Housing', date: new Date(2025, 3, 1), description: 'Monthly Rent' },
-    { id: '4', accountId: 'a1', amount: 30, category: 'Entertainment', date: new Date(2025, 2, 20), description: 'Movie' },
-    { id: '5', accountId: 'a2', amount: 150, category: 'Debt Repayment', date: new Date(2025, 3, 5), description: 'Credit Card' },
-    { id: '6', accountId: 'a1', amount: 200, category: 'Savings', date: new Date(2025, 3, 2), description: 'Monthly Savings' },
+    { id: '1', accountId: 'a1', amount: 50, category: 'Food', date: new Date(2025, 3, 15), description: 'Cafe Luna - Lunch' },
+    { id: '2', accountId: 'a1', amount: 120, category: 'Transport', date: new Date(2025, 3, 10), description: 'QuickFill - Gas' },
+    { id: '3', accountId: 'a2', amount: 800, category: 'Housing', date: new Date(2025, 3, 1), description: 'Urban Properties - Monthly Rent' },
+    { id: '4', accountId: 'a1', amount: 30, category: 'Entertainment', date: new Date(2025, 2, 20), description: 'CineStar - Movie' },
+    { id: '5', accountId: 'a2', amount: 150, category: 'Debt Repayment', date: new Date(2025, 3, 5), description: 'First Bank - Credit Card' },
+    { id: '6', accountId: 'a1', amount: 200, category: 'Savings', date: new Date(2025, 3, 2), description: 'Savings Account - Monthly Transfer' },
+    { id: '7', accountId: 'a1', amount: 65, category: 'Food', date: new Date(2025, 3, 8), description: 'Cafe Luna - Dinner' },
+    { id: '8', accountId: 'a1', amount: 110, category: 'Transport', date: new Date(2025, 2, 25), description: 'GasNGo - Fuel' },
+    { id: '9', accountId: 'a2', amount: 45, category: 'Shopping', date: new Date(2025, 3, 12), description: 'Urban Market - Groceries' },
+    { id: '10', accountId: 'a1', amount: 38, category: 'Food', date: new Date(2025, 2, 18), description: 'Fresh Bites - Lunch' },
+    { id: '11', accountId: 'a1', amount: 70, category: 'Shopping', date: new Date(2025, 3, 7), description: 'Urban Market - Household items' },
+    { id: '12', accountId: 'a2', amount: 125, category: 'Transport', date: new Date(2025, 2, 15), description: 'QuickFill - Gas and car wash' }
   ];
   const income = [
     { id: 'i1', accountId: 'a1', amount: 2500, source: 'Salary', date: new Date(2025, 3, 1), description: 'April Salary' },
@@ -100,6 +107,8 @@ export default function AnalyticsPage() {
             <Skeleton className="h-[320px] rounded-2xl" />
             <Skeleton className="h-[320px] rounded-2xl" />
             <Skeleton className="h-[320px] rounded-2xl" />
+            {/* Merchant Analytics skeleton - spans full width */}
+            <Skeleton className="h-[320px] rounded-2xl md:col-span-2 lg:col-span-3" />
           </div>
         ) : data ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -120,6 +129,11 @@ export default function AnalyticsPage() {
                 recurringExpenses={healthScoreProps.recurringExpenses}
               />
             )}
+            
+            {/* Add Merchant Analytics - spans full width on larger screens */}
+            <div className="md:col-span-2 lg:col-span-3">
+              <MerchantAnalytics expenses={data.expenses} />
+            </div>
           </div>
         ) : (
           <p className="text-center text-gray-500">Could not load analytics data.</p>
