@@ -241,13 +241,15 @@ export function CategorySelect({
     // Check if dropdown would overflow to the right
     const exceedsRight = rect.left + 340 > window.innerWidth;
     
-    // Position for the dropdown
+    // Position for the dropdown - using fixed positioning
     const left = exceedsRight 
       ? window.innerWidth - 340 - 16 // Align to right with padding
       : Math.max(16, rect.left); // Keep it within viewport from left
     
     // Calculate top position - below the trigger
-    const top = rect.bottom + window.scrollY + 5;
+    // Use window.pageYOffset instead of window.scrollY for better browser support
+    const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+    const top = rect.bottom + scrollY + 5;
     
     setDropdownPosition({ top, left });
   };
@@ -277,28 +279,40 @@ export function CategorySelect({
       setTimeout(() => {
         searchInputRef.current?.focus();
       }, 100);
-      
-      // Add event listener to close dropdown when clicking outside
-      const handleClickOutside = (e: MouseEvent) => {
-        if (
-          dropdownRef.current && 
-          !dropdownRef.current.contains(e.target as Node) &&
-          triggerRef.current &&
-          !triggerRef.current.contains(e.target as Node)
-        ) {
-          setIsOpen(false);
-        }
-      };
-      
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
     } else {
       controls.start("hidden");
       setActiveCategory(null);
       setSearchValue("");
     }
   }, [isOpen, controls]);
-  
+
+  // Add event listener to handle click outside
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current && 
+        !dropdownRef.current.contains(event.target as Node) &&
+        triggerRef.current && 
+        !triggerRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    // Force update position when dropdown opens
+    updateDropdownPosition();
+    
+    // Add a small delay to ensure elements are rendered before positioning
+    setTimeout(() => {
+      updateDropdownPosition();
+    }, 10);
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
+
   // Entrance animation
   useEffect(() => {
     if (triggerRef.current) {
@@ -407,6 +421,7 @@ export function CategorySelect({
   // Toggle dropdown
   const toggleDropdown = () => {
     if (disabled) return;
+    console.log('Toggling dropdown. Current state:', isOpen, 'New state:', !isOpen); // <-- Add console log
     setIsOpen(!isOpen);
   };
   

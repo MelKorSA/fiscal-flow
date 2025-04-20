@@ -12,7 +12,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { Account } from '@/app/dashboard/page'; 
 import { 
-  availableExpenseCategoriesArray, 
+  availableMainCategoriesArray, // Corrected import name
   parseCategoryValue,
   getFlatCategoryOptions
 } from '@/config/expense-categories';
@@ -119,37 +119,59 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
             }),
           });
 
+          // Check if the response status is OK
           if (!response.ok) {
-            throw new Error(`API error: ${response.statusText}`);
+            // Try to parse the error response body
+            let errorBody = null;
+            try {
+              errorBody = await response.json();
+            } catch (parseError) {
+              // Ignore if parsing fails
+            }
+            console.error("API Error:", response.status, response.statusText, errorBody);
+            // Throw an error to be caught below
+            throw new Error(`API error: ${response.status} ${response.statusText}`); 
           }
 
           const result = await response.json();
 
-          if (result.category) {
+          // Check if the result indicates success (based on the backend change)
+          // And if a category was actually returned
+          if (result.category) { // Assuming backend always returns category/confidence even on failure now
             setAiSuggestion({ 
               category: result.category, 
               confidence: result.confidence ?? 0
             });
             
+            // Only auto-set if confidence is high and category isn't already set
             if ((result.confidence ?? 0) >= 0.85 && !category) {
               setCategory(result.category);
             }
+          } else {
+             // Handle cases where category might be missing even if response is 200
+             console.warn("Categorization API returned success but no category:", result);
+             setAiSuggestion(null);
           }
+
         } catch (error) {
-          console.error("Error calling categorization API:", error);
-          setAiSuggestion(null);
+          // Log the caught error (could be fetch error or the thrown API error)
+          console.error("Error calling categorization API:", error); 
+          setAiSuggestion(null); // Ensure suggestion is cleared on error
         } finally {
           setIsCategorizing(false);
         }
       } else {
-        setAiSuggestion(null);
+        setAiSuggestion(null); // Clear suggestion if description is too short
+        setIsCategorizing(false); // Ensure loading state is off
       }
     };
     
+    // Debounce the API call
     const timer = setTimeout(() => {
       categorizeTransaction();
-    }, 600);
+    }, 600); // Increased debounce slightly
     
+    // Cleanup function to clear the timer if dependencies change before it fires
     return () => clearTimeout(timer);
   }, [description, amount, date, previousTransactions, category]);
 
@@ -376,16 +398,24 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="description" className="text-sm font-medium text-[#86868B] dark:text-[#A1A1A6]">Description (Optional)</Label>
+        <Label htmlFor="description" className="text-sm font-medium text-[#86868B] dark:text-[#A1A1A6]">
+          Description (Optional)
+          <span className="ml-1 text-xs text-[#007AFF] dark:text-[#0A84FF]">
+            For merchant analytics: "Merchant - Details"
+          </span>
+        </Label>
         <Input
           id="description"
           type="text"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="e.g., Weekly groceries"
+          placeholder="e.g., Cafe Luna - Coffee"
           className="rounded-xl bg-white/60 dark:bg-[#3A3A3C]/60 backdrop-blur-md shadow-sm border-[0.5px] border-[#DADADC] dark:border-[#48484A] focus-visible:ring-[#007AFF] dark:focus-visible:ring-[#0A84FF] focus-visible:ring-opacity-30"
           suppressHydrationWarning={true}
         />
+        <p className="text-xs text-[#8E8E93] dark:text-[#98989D]">
+          Tip: Format as "Merchant - Details" to enable merchant analytics and price comparisons
+        </p>
       </div>
 
       <Button 

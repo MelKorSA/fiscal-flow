@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { ai, createFlow } from "../ai-instance";
-import { availableExpenseCategoriesArray } from "@/config/expense-categories";
+import { ai } from "../ai-instance"; // Import the initialized ai instance
+import { categoryConfig } from "@/config/expense-categories"; // Import exported categoryConfig
 
 // Define input and output schemas
 const TransactionInputSchema = z.object({
@@ -33,7 +33,11 @@ const prompt = ai.definePrompt({
   prompt: `You are a financial transaction categorization assistant. Your task is to analyze the given transaction description and categorize it into one of the available categories.
 
 Available Categories:
-${availableExpenseCategoriesArray.map(category => `- ${category}`).join('\n')}
+${Object.keys(categoryConfig)
+  .filter(category => category !== 'Split Transaction') // Exclude Split Transaction
+  .map(category => `- ${category}`)
+  .join('\n')
+}
 
 Transaction Description: {{{description}}}
 {{#if amount}}Amount: {{{amount}}}{{/if}}
@@ -53,19 +57,23 @@ Based on the description and any other provided information, choose the most app
 The response should include:
 1. The most appropriate category name (exactly matching one from the available list)
 2. A confidence score between 0 and 1 indicating your certainty level (1.0 being completely certain)`,
-} as any); // Type assertion to bypass the type check
+} as any); // Type assertion remains for now if needed
 
-// Create the flow using the pattern from spending-insights.ts
-export const transactionCategorizationFlow = createFlow<
+// Create the flow using ai.defineFlow
+export const transactionCategorizationFlow = ai.defineFlow< // Use ai.defineFlow
   typeof TransactionInputSchema,
   typeof TransactionOutputSchema
 >({
   name: "transactionCategorizationFlow",
   inputSchema: TransactionInputSchema,
   outputSchema: TransactionOutputSchema,
-}, async input => {
-  const { output } = await prompt(input);
-  return output!;
+}, async (input: z.infer<typeof TransactionInputSchema>) => {
+  // Ensure prompt is called correctly and output is handled
+  const result = await prompt(input);
+  if (!result || !result.output) {
+    throw new Error("AI prompt failed to return an output.");
+  }
+  return result.output;
 });
 
 export async function categorizeTxnWithAI(description: string, amount?: number, date?: string, previousTransactions?: Array<{description: string; category: string; amount?: number}>) {
@@ -77,6 +85,11 @@ export async function categorizeTxnWithAI(description: string, amount?: number, 
       previousTransactions: previousTransactions || [],
     });
     
+    // Ensure output exists before accessing properties
+    if (!output) {
+        throw new Error("Transaction categorization flow returned undefined output.");
+    }
+
     return {
       category: output.category,
       confidence: output.confidence,
@@ -84,10 +97,12 @@ export async function categorizeTxnWithAI(description: string, amount?: number, 
     };
   } catch (error) {
     console.error("Error categorizing transaction:", error);
+    // Propagate a more specific error or return a default failure state
     return {
-      category: "Other",
+      category: "Other", // Default category on error
       confidence: 0,
       success: false,
+      error: error instanceof Error ? error.message : String(error), // Include error message
     };
   }
 }

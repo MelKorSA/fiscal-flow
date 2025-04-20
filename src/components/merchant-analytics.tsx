@@ -36,6 +36,23 @@ export function MerchantAnalytics({ expenses }: MerchantAnalyticsProps) {
   const [sortType, setSortType] = useState<'amount' | 'frequency'>('amount');
   const [selectedMerchant, setSelectedMerchant] = useState<string | null>(null);
   const [showComparison, setShowComparison] = useState<boolean>(false);
+  const [showGuide, setShowGuide] = useState<boolean>(true);
+  const [showMerchantInput, setShowMerchantInput] = useState<boolean>(false);
+  const [manualMerchant, setManualMerchant] = useState<string>('');
+  const [manualCategory, setManualCategory] = useState<string>('');
+
+  // Store the showGuide state in localStorage to only show it on first use
+  useEffect(() => {
+    const hasSeenGuide = localStorage.getItem('merchant-analytics-guide-seen');
+    if (hasSeenGuide) {
+      setShowGuide(false);
+    }
+  }, []);
+
+  const dismissGuide = () => {
+    setShowGuide(false);
+    localStorage.setItem('merchant-analytics-guide-seen', 'true');
+  };
 
   const barChartRef = useRef<HTMLDivElement>(null);
   const comparisonRef = useRef<HTMLDivElement>(null);
@@ -238,6 +255,93 @@ export function MerchantAnalytics({ expenses }: MerchantAnalyticsProps) {
       </CardHeader>
       
       <CardContent className={`p-0 pt-2 ${expanded ? 'pb-4' : 'pb-2'} transition-all duration-300`}>
+        {showGuide && (
+          <div className="px-4 py-2 bg-[#F9F9FB] dark:bg-[#28282A] rounded-xl mb-4">
+            <h3 className="text-sm font-medium text-[#1D1D1F] dark:text-white mb-2">
+              How to Use Merchant Analytics
+            </h3>
+            <p className="text-xs text-[#8E8E93] dark:text-[#98989D] mb-2">
+              Add transactions with merchant details to analyze your spending patterns and compare prices across merchants.
+            </p>
+            <ol className="text-xs pl-4 list-decimal text-[#8E8E93] dark:text-[#98989D] mb-2 space-y-1">
+              <li>Format descriptions as: <span className="font-medium text-[#1D1D1F] dark:text-white">Merchant Name - Details</span></li>
+              <li>Example: "Cafe Luna - Lunch" or "QuickFill - Gas"</li>
+              <li>Use consistent merchant names for better comparisons</li>
+            </ol>
+            <Button 
+              variant="link" 
+              size="sm" 
+              onClick={dismissGuide} 
+              className="text-[#007AFF] dark:text-[#0A84FF] text-xs font-medium"
+            >
+              Got it!
+            </Button>
+          </div>
+        )}
+
+        {/* Manual Merchant Entry Option */}
+        <div className="px-4 pb-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowMerchantInput(!showMerchantInput)}
+            className="text-xs w-full mb-3 flex items-center justify-center gap-1 border-dashed border-[#DADADC] dark:border-[#48484A]"
+          >
+            {showMerchantInput ? "Hide Manual Entry" : "Add Merchant Manually (Optional)"}
+          </Button>
+          
+          {showMerchantInput && (
+            <div className="bg-[#F9F9FB] dark:bg-[#28282A] rounded-xl p-3 mb-3 animate-fadeIn">
+              <h3 className="text-sm font-medium text-[#1D1D1F] dark:text-white mb-2">
+                Manual Merchant Entry
+              </h3>
+              <div className="space-y-2">
+                <div>
+                  <label className="text-xs text-[#8E8E93] dark:text-[#98989D] block mb-1">
+                    Merchant Name
+                  </label>
+                  <input
+                    type="text"
+                    value={manualMerchant}
+                    onChange={(e) => setManualMerchant(e.target.value)}
+                    placeholder="e.g., Cafe Luna"
+                    className="w-full text-xs py-2 px-3 rounded-lg border border-[#DADADC] dark:border-[#48484A] bg-white/70 dark:bg-[#3A3A3C]/70"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-[#8E8E93] dark:text-[#98989D] block mb-1">
+                    Category
+                  </label>
+                  <select
+                    value={manualCategory}
+                    onChange={(e) => setManualCategory(e.target.value)}
+                    className="w-full text-xs py-2 px-3 rounded-lg border border-[#DADADC] dark:border-[#48484A] bg-white/70 dark:bg-[#3A3A3C]/70"
+                  >
+                    <option value="">Select category...</option>
+                    <option value="Coffee">Coffee</option>
+                    <option value="Dining Out">Dining Out</option>
+                    <option value="Groceries">Groceries</option>
+                    <option value="Transport">Transport</option>
+                    <option value="Shopping">Shopping</option>
+                    <option value="Entertainment">Entertainment</option>
+                    <option value="Utilities">Utilities</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <Button
+                  size="sm"
+                  className="w-full text-xs bg-[#007AFF] hover:bg-[#0071E3] text-white mt-1"
+                >
+                  Add to Analytics
+                </Button>
+                <p className="text-[11px] text-[#8E8E93] dark:text-[#98989D] mt-1">
+                  Note: Manual entries will be stored locally for merchant analytics.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="px-4 pb-2 flex items-center justify-between">
           <div className="flex space-x-2">
             <Badge 

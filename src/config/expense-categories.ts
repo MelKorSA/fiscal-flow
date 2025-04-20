@@ -32,7 +32,7 @@ interface CategoryConfigItem {
 }
 
 // Map categories to icons, colors, and their subcategories
-const categoryConfig: Record<MainExpenseCategory, CategoryConfigItem> = {
+export const categoryConfig: Record<MainExpenseCategory, CategoryConfigItem> = {
     "Groceries": { 
         icon: ShoppingCart, 
         color: "text-green-500",
@@ -192,9 +192,6 @@ export const getFlatCategoryOptions = (): { value: string; label: string }[] => 
   });
   return options;
 };
-
-// For backward compatibility
-export const availableExpenseCategoriesArray: string[] = getAllCategoriesFlat();
 
 // Function to format a category display with parent if it's a subcategory
 export const formatCategoryDisplay = (category: string): { display: string, isSubcategory: boolean } => {
