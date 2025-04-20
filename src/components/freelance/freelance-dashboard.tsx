@@ -18,7 +18,8 @@ import {
   Save,
   Download,
   Upload,
-  HelpCircle
+  HelpCircle,
+  Trash2
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
@@ -30,6 +31,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { format } from "date-fns";
 import { Calendar } from "../ui/calendar";
 import { cn } from "@/lib/utils";
+import { Badge } from "../ui/badge";
 
 // Types for income tracking
 export interface FreelanceIncome {
@@ -129,6 +131,9 @@ export function FreelanceDashboard() {
     hoursWorked: 0
   });
   
+  // Add state for viewing details of an income entry
+  const [viewingIncome, setViewingIncome] = useState<FreelanceIncome | null>(null);
+  
   // State for freelance income data
   const [freelanceIncomes, setFreelanceIncomes] = useState<FreelanceIncome[]>([]);
 
@@ -218,6 +223,15 @@ export function FreelanceDashboard() {
       hoursWorked: 0
     });
     setIsAddingIncome(false);
+  };
+
+  // Delete a specific income entry
+  const handleDeleteIncome = (id: string) => {
+    if (confirm("Are you sure you want to delete this income entry? This cannot be undone.")) {
+      setFreelanceIncomes(prev => prev.filter(income => income.id !== id));
+      setViewingIncome(null); // Close details if open
+      toast.success("Income entry deleted successfully");
+    }
   };
 
   // Load sample data
@@ -500,7 +514,7 @@ export function FreelanceDashboard() {
     platforms: "Track income across different freelance platforms. Add your income entries to see which platforms are most profitable after fees.",
     clients: "Analyze which clients provide the most value based on hourly rate and total income. Higher profitability score means better ROI.",
     time: "Optimize your hourly rates by seeing which categories and clients provide the best return for your time investment.",
-    passive: "Get ideas for turning your freelance skills into passive income streams based on your strongest categories."
+    passive: "Get ideas for turning your freelance skills into passive income streams based on your strongest categories. Click on any opportunity card to see detailed implementation advice."
   };
 
   return (
@@ -553,6 +567,95 @@ export function FreelanceDashboard() {
               Load Sample Data
             </Button>
             <Button onClick={dismissInstructions}>Got It</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Income Entry Details Dialog */}
+      <Dialog open={!!viewingIncome} onOpenChange={(open) => !open && setViewingIncome(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Income Entry Details</DialogTitle>
+            <DialogDescription>
+              View and manage your income entry information
+            </DialogDescription>
+          </DialogHeader>
+          
+          {viewingIncome && (
+            <div className="space-y-4 py-2">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs text-[#86868B] dark:text-[#98989D]">Platform</Label>
+                  <p className="font-medium text-sm">{viewingIncome.platform}</p>
+                </div>
+                
+                <div className="space-y-1">
+                  <Label className="text-xs text-[#86868B] dark:text-[#98989D]">Category</Label>
+                  <p className="font-medium text-sm">{viewingIncome.category}</p>
+                </div>
+              </div>
+              
+              <div className="space-y-1">
+                <Label className="text-xs text-[#86868B] dark:text-[#98989D]">Client</Label>
+                <p className="font-medium text-sm">{viewingIncome.client}</p>
+              </div>
+              
+              <div className="space-y-1">
+                <Label className="text-xs text-[#86868B] dark:text-[#98989D]">Project</Label>
+                <p className="font-medium text-sm">{viewingIncome.project}</p>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs text-[#86868B] dark:text-[#98989D]">Amount</Label>
+                  <p className="font-medium text-sm">{viewingIncome.currency} {viewingIncome.amount.toFixed(2)}</p>
+                </div>
+                
+                <div className="space-y-1">
+                  <Label className="text-xs text-[#86868B] dark:text-[#98989D]">Date</Label>
+                  <p className="font-medium text-sm">
+                    {format(new Date(viewingIncome.date), "PPP")}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs text-[#86868B] dark:text-[#98989D]">Hours Worked</Label>
+                  <p className="font-medium text-sm">{viewingIncome.hoursWorked} hours</p>
+                </div>
+                
+                <div className="space-y-1">
+                  <Label className="text-xs text-[#86868B] dark:text-[#98989D]">Hourly Rate</Label>
+                  <p className="font-medium text-sm">{viewingIncome.currency} {(viewingIncome.amount / viewingIncome.hoursWorked).toFixed(2)}/hr</p>
+                </div>
+              </div>
+              
+              <div className="space-y-1">
+                <Label className="text-xs text-[#86868B] dark:text-[#98989D]">Payment Status</Label>
+                <Badge className={
+                  viewingIncome.paymentStatus === 'paid' ? 'bg-[#E5F8EF] text-[#34C759]' :
+                  viewingIncome.paymentStatus === 'pending' ? 'bg-[#FEF4E8] text-[#FF9500]' :
+                  'bg-[#FCF2F1] text-[#FF3B30]'
+                }>
+                  {viewingIncome.paymentStatus.charAt(0).toUpperCase() + viewingIncome.paymentStatus.slice(1)}
+                </Badge>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter className="flex justify-between">
+            <Button 
+              variant="destructive" 
+              size="sm" 
+              onClick={() => viewingIncome && handleDeleteIncome(viewingIncome.id)}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Entry
+            </Button>
+            <Button onClick={() => setViewingIncome(null)}>
+              Close
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -857,7 +960,7 @@ export function FreelanceDashboard() {
             </div>
           </CardHeader>
           <CardContent className="pt-4">
-            <div className="text-2xl font-semibold text-[#1D1D1F] dark:text-white">${averageHourlyRate.toFixed(2)}</div>
+            <div className="text-2xl font-semibold text-[#1D1D1F] dark:text:white">${averageHourlyRate.toFixed(2)}</div>
             <p className="text-xs text-[#86868B] dark:text-[#A1A1A6] mt-1.5">Per hour earnings</p>
           </CardContent>
         </Card>
@@ -869,7 +972,7 @@ export function FreelanceDashboard() {
           <div className="p-3 rounded-full bg-[#F2F2F7] dark:bg-[#38383A] inline-flex mb-4">
             <Briefcase className="h-8 w-8 text-[#8E8E93] dark:text-[#98989D]" />
           </div>
-          <h3 className="text-xl font-medium text-[#1D1D1F] dark:text-white mb-2">No income entries yet</h3>
+          <h3 className="text-xl font-medium text-[#1D1D1F] dark:text:white mb-2">No income entries yet</h3>
           <p className="text-[#86868B] dark:text-[#98989D] max-w-md mx-auto mb-6">
             Add your freelance income entries to see analytics and track your performance across platforms, clients, and time.
           </p>
@@ -919,6 +1022,7 @@ export function FreelanceDashboard() {
           <PlatformIncome 
             platforms={platforms} 
             incomes={freelanceIncomes} 
+            onViewIncome={setViewingIncome}
           />
         </TabsContent>
         
@@ -927,6 +1031,7 @@ export function FreelanceDashboard() {
           <ClientProfitability 
             clients={clients} 
             incomes={freelanceIncomes} 
+            onViewIncome={setViewingIncome}
           />
         </TabsContent>
         
@@ -934,11 +1039,31 @@ export function FreelanceDashboard() {
         <TabsContent value="time">
           <TimeTracking 
             incomes={freelanceIncomes} 
+            onViewIncome={setViewingIncome}
           />
         </TabsContent>
         
         {/* Passive Income Suggestions Tab */}
         <TabsContent value="passive">
+          <div className="mb-4 bg-[#F9F9FB] dark:bg-[#28282A] rounded-lg p-4 text-sm">
+            <div className="flex items-start gap-3">
+              <div className="p-1.5 bg-[#FEF4E8] dark:bg-[#382D1E] rounded-full shrink-0">
+                <Lightbulb className="h-5 w-5 text-[#FF9500] dark:text-[#FF9F0A]" />
+              </div>
+              <div>
+                <h4 className="text-base font-medium text-[#1D1D1F] dark:text:white mb-1">How to use Passive Income Suggestions</h4>
+                <p className="text-[#86868B] dark:text-[#98989D] mb-2">
+                  This section analyzes your freelance skills and work history to suggest personalized passive income opportunities.
+                </p>
+                <ul className="list-disc pl-5 text-[#86868B] dark:text-[#98989D] space-y-1">
+                  <li>Add more income entries to improve personalized suggestions</li>
+                  <li>Click on any card to view detailed implementation advice</li>
+                  <li>Filter ideas by type or effort required</li>
+                  <li>Match percentage shows compatibility with your current skills</li>
+                </ul>
+              </div>
+            </div>
+          </div>
           <PassiveIncomeSuggestions 
             incomes={freelanceIncomes} 
             skills={[...new Set(freelanceIncomes.map(income => income.category))]} 

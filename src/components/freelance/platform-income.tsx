@@ -44,6 +44,7 @@ import {
 interface PlatformIncomeProps {
   platforms: Platform[];
   incomes: FreelanceIncome[];
+  onViewIncome?: (income: FreelanceIncome) => void;
 }
 
 // Colors for charts
@@ -75,7 +76,7 @@ const chartConfig = {
   }
 };
 
-export function PlatformIncome({ platforms, incomes }: PlatformIncomeProps) {
+export function PlatformIncome({ platforms, incomes, onViewIncome }: PlatformIncomeProps) {
   const [sortBy, setSortBy] = useState<'income' | 'fees' | 'netIncome'>('income');
   const [view, setView] = useState<'chart' | 'details'>('chart');
 

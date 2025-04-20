@@ -32,6 +32,7 @@ import { Users, TrendingUp, Clock, DollarSign, Info, ArrowUpRight, Percent } fro
 interface ClientProfitabilityProps {
   clients: Client[];
   incomes: FreelanceIncome[];
+  onViewIncome?: (income: FreelanceIncome) => void;
 }
 
 // Chart config for styling
@@ -47,7 +48,7 @@ const chartConfig = {
   }
 };
 
-export function ClientProfitability({ clients, incomes }: ClientProfitabilityProps) {
+export function ClientProfitability({ clients, incomes, onViewIncome }: ClientProfitabilityProps) {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
   // Sort clients by profitability score

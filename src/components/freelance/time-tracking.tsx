@@ -49,6 +49,7 @@ import { Badge } from '@/components/ui/badge';
 
 interface TimeTrackingProps {
   incomes: FreelanceIncome[];
+  onViewIncome?: (income: FreelanceIncome) => void;
 }
 
 interface TimeEntry {
@@ -92,7 +93,7 @@ const chartConfig = {
   }
 };
 
-export function TimeTracking({ incomes }: TimeTrackingProps) {
+export function TimeTracking({ incomes, onViewIncome }: TimeTrackingProps) {
   const [timeFrame, setTimeFrame] = useState<'week' | 'month' | 'quarter' | 'all'>('month');
   const [targetRate, setTargetRate] = useState<number>(75);
 
@@ -291,7 +292,7 @@ export function TimeTracking({ incomes }: TimeTrackingProps) {
     <div className="space-y-6">
       <div className="flex flex-wrap gap-4 justify-between items-center mb-6">
         <div>
-          <h2 className="text-xl font-semibold text-[#1D1D1F] dark:text-white">Time Analytics & Optimization</h2>
+          <h2 className="text-xl font-semibold text-[#1D1D1F] dark:text:white">Time Analytics & Optimization</h2>
           <p className="text-sm text-[#86868B] dark:text-[#98989D]">
             Track your time efficiency and optimize your hourly rates
           </p>
@@ -336,7 +337,7 @@ export function TimeTracking({ incomes }: TimeTrackingProps) {
             </div>
           </CardHeader>
           <CardContent className="pt-4">
-            <div className="text-2xl font-semibold text-[#1D1D1F] dark:text-white">{metrics.totalHours}</div>
+            <div className="text-2xl font-semibold text-[#1D1D1F] dark:text:white">{metrics.totalHours}</div>
             <p className="text-xs text-[#86868B] dark:text-[#A1A1A6] mt-1.5">Billable hours</p>
           </CardContent>
         </Card>
@@ -367,7 +368,7 @@ export function TimeTracking({ incomes }: TimeTrackingProps) {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-sm bg-white/80 dark:bg-[#2C2C2E]/80 backdrop-blur-md rounded-2xl overflow-hidden transition-all hover:shadow-md hover:scale-[1.02] duration-300">
+        <Card className="border-0 shadow-sm bg:white/80 dark:bg-[#2C2C2E]/80 backdrop-blur-md rounded-2xl overflow-hidden transition-all hover:shadow-md hover:scale-[1.02] duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-[#86868B] dark:text-[#A1A1A6]">Worst Rate</CardTitle>
             <div className="p-1.5 bg-[#FCF2F1] dark:bg-[#3A281E] rounded-full">
@@ -380,7 +381,7 @@ export function TimeTracking({ incomes }: TimeTrackingProps) {
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-sm bg-white/80 dark:bg-[#2C2C2E]/80 backdrop-blur-md rounded-2xl overflow-hidden transition-all hover:shadow-md hover:scale-[1.02] duration-300">
+        <Card className="border-0 shadow-sm bg:white/80 dark:bg-[#2C2C2E]/80 backdrop-blur-md rounded-2xl overflow-hidden transition-all hover:shadow-md hover:scale-[1.02] duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-[#86868B] dark:text-[#A1A1A6]">Hours Below Target</CardTitle>
             <div className="p-1.5 bg-[#FCF2F1] dark:bg-[#3A281E] rounded-full">
