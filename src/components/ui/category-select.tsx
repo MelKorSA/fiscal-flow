@@ -80,8 +80,8 @@ const dropdownVariants: Variants = {
   }
 };
 
-// Portal component for the dropdown
-function DropdownPortal({ children }: { children: React.ReactNode }) {
+// Portal component for the dropdown with simpler positioning
+function DropdownPortal({ children, triggerRect }: { children: React.ReactNode, triggerRect: DOMRect | null }) {
   const [mounted, setMounted] = useState(false);
   
   useEffect(() => {
@@ -89,7 +89,20 @@ function DropdownPortal({ children }: { children: React.ReactNode }) {
     return () => setMounted(false);
   }, []);
 
-  return mounted ? createPortal(children, document.body) : null;
+  // Position the dropdown relative to the trigger element
+  const style: React.CSSProperties = {
+    position: 'fixed',
+    top: triggerRect ? `${triggerRect.bottom + window.scrollY + 5}px` : '0',
+    left: triggerRect ? `${triggerRect.left}px` : '0',
+    width: triggerRect ? `${triggerRect.width}px` : '340px',
+    maxWidth: 'calc(100vw - 2rem)',
+    zIndex: 9999,
+  };
+
+  return mounted ? createPortal(
+    <div style={style}>{children}</div>, 
+    document.body
+  ) : null;
 }
 
 export function CategorySelect({ 
@@ -108,7 +121,7 @@ export function CategorySelect({
   const [activeCategory, setActiveCategory] = useState<MainExpenseCategory | null>(null);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [showRecents, setShowRecents] = useState(true);
-  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
+  const [triggerRect, setTriggerRect] = useState<DOMRect | null>(null);
   
   // Refs
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -231,49 +244,19 @@ export function CategorySelect({
     
     return null;
   }, [value, processedCategories]);
-  
-  // Calculate dropdown position
-  const updateDropdownPosition = () => {
-    if (!triggerRef.current) return;
-    
-    const rect = triggerRef.current.getBoundingClientRect();
-    
-    // Check if dropdown would overflow to the right
-    const exceedsRight = rect.left + 340 > window.innerWidth;
-    
-    // Position for the dropdown - using fixed positioning
-    const left = exceedsRight 
-      ? window.innerWidth - 340 - 16 // Align to right with padding
-      : Math.max(16, rect.left); // Keep it within viewport from left
-    
-    // Calculate top position - below the trigger
-    // Use window.pageYOffset instead of window.scrollY for better browser support
-    const scrollY = window.pageYOffset || document.documentElement.scrollTop;
-    const top = rect.bottom + scrollY + 5;
-    
-    setDropdownPosition({ top, left });
+
+  // Update trigger rectangle when opening the dropdown
+  const updateTriggerRect = () => {
+    if (triggerRef.current) {
+      setTriggerRect(triggerRef.current.getBoundingClientRect());
+    }
   };
-  
-  // Handle window resize to reposition dropdown
-  useEffect(() => {
-    const handleResize = () => {
-      if (isOpen) updateDropdownPosition();
-    };
-    
-    window.addEventListener('resize', handleResize);
-    window.addEventListener('scroll', handleResize);
-    
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      window.removeEventListener('scroll', handleResize);
-    };
-  }, [isOpen]);
   
   // Handle dropdown open/close
   useEffect(() => {
     if (isOpen) {
       controls.start("visible");
-      updateDropdownPosition();
+      updateTriggerRect();
       
       // Focus search input when dropdown opens
       setTimeout(() => {
@@ -301,14 +284,6 @@ export function CategorySelect({
       }
     };
 
-    // Force update position when dropdown opens
-    updateDropdownPosition();
-    
-    // Add a small delay to ensure elements are rendered before positioning
-    setTimeout(() => {
-      updateDropdownPosition();
-    }, 10);
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
@@ -323,51 +298,6 @@ export function CategorySelect({
       );
     }
   }, []);
-
-  // Add some custom styles
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.textContent = `
-      .ios-scrollbars::-webkit-scrollbar {
-        width: 6px;
-      }
-      
-      .ios-scrollbars::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      
-      .ios-scrollbars::-webkit-scrollbar-thumb {
-        background-color: rgba(0,0,0,0.1);
-        border-radius: 3px;
-      }
-      
-      .dark .ios-scrollbars::-webkit-scrollbar-thumb {
-        background-color: rgba(255,255,255,0.1);
-      }
-      
-      @media (hover: hover) {
-        .ios-scrollbars::-webkit-scrollbar-thumb {
-          opacity: 0;
-          transition: opacity 0.3s;
-        }
-        
-        .ios-scrollbars:hover::-webkit-scrollbar-thumb {
-          opacity: 1;
-        }
-      }
-      
-      .category-dropdown {
-        z-index: 9999;
-        position: fixed;
-      }
-    `;
-    document.head.appendChild(style);
-
-    // Cleanup function to remove the style when the component unmounts
-    return () => {
-      document.head.removeChild(style);
-    };
-  }, []); // Empty dependency array ensures this runs only once on mount
 
   // Handle category selection
   const handleCategorySelect = (categoryValue: string) => {
@@ -421,7 +351,8 @@ export function CategorySelect({
   // Toggle dropdown
   const toggleDropdown = () => {
     if (disabled) return;
-    console.log('Toggling dropdown. Current state:', isOpen, 'New state:', !isOpen); // <-- Add console log
+    console.log('Toggling dropdown. Current state:', isOpen, 'New state:', !isOpen);
+    updateTriggerRect();
     setIsOpen(!isOpen);
   };
   
@@ -437,7 +368,7 @@ export function CategorySelect({
           bg-white/70 dark:bg-[#1C1C1E]/80 backdrop-blur-xl
           rounded-xl border border-[#E5E5EA] dark:border-[#38383A]
           transition-all duration-200
-          ${required ? 'required:ring-2 required:ring-red-500' : ''}
+          ${required && !value ? 'ring-2 ring-red-500' : ''}
           ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-md active:scale-[0.98]'}
         `}
       >
@@ -501,25 +432,11 @@ export function CategorySelect({
       {/* Custom dropdown rendered in a portal */}
       <AnimatePresence>
         {isOpen && (
-          <DropdownPortal>
+          <DropdownPortal triggerRect={triggerRect}>
             <motion.div
               ref={dropdownRef}
-              className="category-dropdown"
-              style={{
-                position: 'fixed', // Changed from 'absolute' to 'fixed'
-                top: `${dropdownPosition.top}px`,
-                left: `${dropdownPosition.left}px`,
-                width: '340px',
-                maxWidth: 'calc(100vw - 2rem)',
-                zIndex: 9999,
-                // Use CSS variables for background/border for theme compatibility
-                background: 'var(--popover, hsl(var(--popover)))',
-                borderRadius: '0.75rem',
-                boxShadow: '0 10px 30px rgba(0, 0, 0, 0.1)',
-                border: '1px solid var(--border, hsl(var(--border)))',
-                backdropFilter: 'blur(10px)',
-                WebkitBackdropFilter: 'blur(10px)', // For Safari
-              }}
+              className="shadow-lg rounded-xl border border-[#E5E5EA] dark:border-[#38383A] bg-white dark:bg-[#1C1C1E] backdrop-blur-lg overflow-hidden"
+              style={{ width: '100%' }}
               variants={dropdownVariants}
               initial="hidden"
               animate={controls}

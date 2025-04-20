@@ -7,12 +7,12 @@ import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { Calendar as CalendarIcon, DollarSign, Sparkles, Scissors, Plus } from 'lucide-react';
+import { Calendar as CalendarIcon, DollarSign, Sparkles, Scissors, Plus, Store } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { Account } from '@/app/dashboard/page'; 
 import { 
-  availableMainCategoriesArray, // Corrected import name
+  availableMainCategoriesArray, 
   parseCategoryValue,
   getFlatCategoryOptions
 } from '@/config/expense-categories';
@@ -29,6 +29,7 @@ interface AddExpenseFormProps {
     category: string; 
     date: Date; 
     description: string;
+    merchant?: string;
     splitItems?: SplitItem[];
   }) => void;
   categories: string[];
@@ -43,6 +44,7 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
   const [category, setCategory] = useState<string>('');
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [description, setDescription] = useState<string>('');
+  const [merchant, setMerchant] = useState<string>(''); // New merchant field
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [aiSuggestion, setAiSuggestion] = useState<{ category: string; confidence: number } | null>(null);
   const [isCategorizing, setIsCategorizing] = useState(false);
@@ -61,7 +63,8 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
       const newItem: SplitItem = {
         id: uuidv4(),
         category: '',
-        amount: remainingAmount
+        amount: remainingAmount,
+        merchant: merchant // Pass merchant to split items
       };
       setSplitItems([...splitItems, newItem]);
     }
@@ -71,7 +74,7 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
     setSplitItems(splitItems.filter(item => item.id !== id));
   };
 
-  const updateSplitItem = (id: string, field: 'category' | 'amount', value: string | number) => {
+  const updateSplitItem = (id: string, field: 'category' | 'amount' | 'merchant', value: string | number) => {
     setSplitItems(splitItems.map(item => {
       if (item.id === id) {
         return { ...item, [field]: value };
@@ -86,13 +89,25 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
         setSplitItems([{
           id: uuidv4(),
           category: category || '',
-          amount: totalAmount
+          amount: totalAmount,
+          merchant: merchant // Include merchant
         }]);
       }
     } else {
       setSplitItems([]);
     }
   }, [isSplitEnabled, totalAmount]);
+
+  // Update split items when merchant changes
+  useEffect(() => {
+    if (isSplitEnabled && splitItems.length > 0 && merchant) {
+      const updatedItems = splitItems.map(item => ({
+        ...item,
+        merchant: merchant
+      }));
+      setSplitItems(updatedItems);
+    }
+  }, [merchant]);
 
   useEffect(() => {
     if (isSplitEnabled && splitItems.length > 0 && category) {
@@ -102,17 +117,22 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
 
   useEffect(() => {
     const categorizeTransaction = async () => {
-      if (description.trim().length >= 3) {
+      if (description.trim().length >= 3 || merchant.trim().length >= 2) {
         setIsCategorizing(true);
         setAiSuggestion(null);
         try {
+          // Combine merchant and description for better AI categorization
+          const combinedDescription = merchant 
+            ? `${merchant}${description ? ` - ${description}` : ''}`
+            : description;
+
           const response = await fetch('/api/categorize-expense', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              description,
+              description: combinedDescription,
               amount: amount ? parseFloat(amount) : undefined,
               date: date?.toISOString(),
               previousTransactions: previousTransactions, 
@@ -173,7 +193,7 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
     
     // Cleanup function to clear the timer if dependencies change before it fires
     return () => clearTimeout(timer);
-  }, [description, amount, date, previousTransactions, category]);
+  }, [description, merchant, amount, date, previousTransactions, category]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -187,8 +207,12 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
           category: isSplitEnabled ? 'Split Transaction' : parseCategoryValue(category),
           date,
           description,
+          merchant, // Include merchant in expense data
           splitItems: isSplitEnabled 
-            ? splitItems.map(item => ({ ...item, category: parseCategoryValue(item.category) })) 
+            ? splitItems.map(item => ({ 
+                ...item, 
+                category: parseCategoryValue(item.category) 
+              })) 
             : undefined,
         };
         await onAddExpense(expenseData);
@@ -198,6 +222,7 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
         setCategory('');
         setDate(new Date());
         setDescription('');
+        setMerchant('');
         setIsSplitEnabled(false);
         setSplitItems([]);
         setAiSuggestion(null);
@@ -293,6 +318,28 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
         </div>
       </div>
 
+      {/* New Merchant Field */}
+      <div className="space-y-2">
+        <Label htmlFor="merchant" className="text-sm font-medium text-[#86868B] dark:text-[#A1A1A6]">
+          Merchant
+        </Label>
+        <div className="relative">
+          <Store className="absolute left-3 top-2.5 h-4 w-4 text-[#86868B] dark:text-[#A1A1A6]" />
+          <Input
+            id="merchant"
+            type="text"
+            value={merchant}
+            onChange={(e) => setMerchant(e.target.value)}
+            placeholder="e.g., Cafe Luna"
+            className="pl-9 rounded-xl bg-white/60 dark:bg-[#3A3A3C]/60 backdrop-blur-md shadow-sm border-[0.5px] border-[#DADADC] dark:border-[#48484A] focus-visible:ring-[#007AFF] dark:focus-visible:ring-[#0A84FF] focus-visible:ring-opacity-30"
+            suppressHydrationWarning={true}
+          />
+        </div>
+        <p className="text-xs text-[#8E8E93] dark:text-[#98989D]">
+          Adding merchant name enables merchant analytics and price comparisons
+        </p>
+      </div>
+
       <div className="flex items-center justify-between bg-[#F9F9FA] dark:bg-[#38383A] p-3 rounded-xl">
         <div className="flex items-center gap-2">
           <div className="p-1.5 bg-[#EDF4FE] dark:bg-[#1C3049] rounded-full">
@@ -320,7 +367,7 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
             required={true}
             aiSuggestion={aiSuggestion} 
             isCategorizing={isCategorizing} 
-            description={description} 
+            description={merchant || description} 
           />
         </div>
       ) : (
@@ -349,6 +396,7 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
               remainingAmount={remainingAmount}
               onUpdate={updateSplitItem}
               onRemove={removeSplitItem}
+              showMerchant={true} // New property to enable merchant field in split items
             />
           ))}
           {remainingAmount > 0 && (
@@ -400,22 +448,16 @@ export function AddExpenseForm({ onAddExpense, categories, accounts, previousTra
       <div className="space-y-2">
         <Label htmlFor="description" className="text-sm font-medium text-[#86868B] dark:text-[#A1A1A6]">
           Description (Optional)
-          <span className="ml-1 text-xs text-[#007AFF] dark:text-[#0A84FF]">
-            For merchant analytics: "Merchant - Details"
-          </span>
         </Label>
         <Input
           id="description"
           type="text"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="e.g., Cafe Luna - Coffee"
+          placeholder="Additional details about this expense"
           className="rounded-xl bg-white/60 dark:bg-[#3A3A3C]/60 backdrop-blur-md shadow-sm border-[0.5px] border-[#DADADC] dark:border-[#48484A] focus-visible:ring-[#007AFF] dark:focus-visible:ring-[#0A84FF] focus-visible:ring-opacity-30"
           suppressHydrationWarning={true}
         />
-        <p className="text-xs text-[#8E8E93] dark:text-[#98989D]">
-          Tip: Format as "Merchant - Details" to enable merchant analytics and price comparisons
-        </p>
       </div>
 
       <Button 

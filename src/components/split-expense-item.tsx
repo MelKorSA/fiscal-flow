@@ -1,23 +1,27 @@
 'use client';
 
 import React from 'react';
-import { X, Minus, Plus } from 'lucide-react';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { DollarSign, X, Store } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { CategorySelect } from '@/components/ui/category-select';
 
-export type SplitItem = {
+export interface SplitItem {
   id: string;
   category: string;
   amount: number;
-};
+  merchant?: string; // Add merchant support to split items
+}
 
 interface SplitExpenseItemProps {
   item: SplitItem;
   index: number;
   totalAmount: number;
   remainingAmount: number;
-  onUpdate: (id: string, field: 'category' | 'amount', value: string | number) => void;
+  onUpdate: (id: string, field: 'category' | 'amount' | 'merchant', value: string | number) => void;
   onRemove: (id: string) => void;
+  showMerchant?: boolean; // Flag to control merchant field visibility
 }
 
 export function SplitExpenseItem({ 
@@ -25,73 +29,71 @@ export function SplitExpenseItem({
   index, 
   totalAmount, 
   remainingAmount,
-  onUpdate, 
-  onRemove 
+  onUpdate,
+  onRemove,
+  showMerchant = false
 }: SplitExpenseItemProps) {
-  const incrementAmount = () => {
-    if (remainingAmount > 0) {
-      const increment = Math.min(1, remainingAmount);
-      onUpdate(item.id, 'amount', (item.amount || 0) + increment);
-    }
-  };
-  
-  const decrementAmount = () => {
-    const amount = item.amount || 0;
-    if (amount > 1) {
-      onUpdate(item.id, 'amount', amount - 1);
-    }
-  };
-  
   return (
-    <div className={`
-      flex items-center gap-3 p-3 rounded-xl
-      ${index === 0 ? 'bg-[#F2F2F7] dark:bg-[#2C2C2E]' : 'bg-[#F9F9FA] dark:bg-[#38383A]'}
-    `}>
-      <div className="flex-1">
-        <CategorySelect
-          value={item.category}
-          onValueChange={(value) => onUpdate(item.id, 'category', value)}
-          placeholder="Select category"
-        />
-      </div>
-      <div className="w-32 flex items-center">
-        <button
-          type="button"
-          onClick={decrementAmount}
-          disabled={!item.amount || item.amount <= 1}
-          className="p-1 rounded-md text-[#8E8E93] dark:text-[#98989D] hover:bg-[#E5E5EA] dark:hover:bg-[#48484A] disabled:opacity-50 disabled:hover:bg-transparent"
-        >
-          <Minus className="h-4 w-4" />
-        </button>
-        <div className="flex-1 mx-1">
-          <Input
-            type="number"
-            step="0.01"
-            min="0"
-            value={item.amount?.toString() || ''}
-            onChange={(e) => {
-              const value = parseFloat(e.target.value);
-              onUpdate(item.id, 'amount', isNaN(value) ? 0 : value);
-            }}
-            className="h-8 px-2 text-center bg-white/60 dark:bg-[#3A3A3C]/60 backdrop-blur-sm border-[#DADADC] dark:border-[#48484A] rounded-lg"
-          />
+    <Card className="p-3 bg-[#F9F9FA] dark:bg-[#38383A] border-0">
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium text-[#8E8E93] dark:text-[#98989D]">
+            Split {index + 1}
+          </span>
+          {index > 0 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 rounded-full hover:bg-[#FF3B30]/10 text-[#FF3B30] dark:text-[#FF453A] dark:hover:bg-[#FF453A]/10"
+              onClick={() => onRemove(item.id)}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          )}
         </div>
-        <button
-          type="button"
-          onClick={incrementAmount}
-          disabled={remainingAmount <= 0}
-          className="p-1 rounded-md text-[#8E8E93] dark:text-[#98989D] hover:bg-[#E5E5EA] dark:hover:bg-[#48484A] disabled:opacity-50 disabled:hover:bg-transparent"
-        >
-          <Plus className="h-4 w-4" />
-        </button>
+        
+        <div className="grid grid-cols-1 gap-2">
+          <CategorySelect 
+            value={item.category} 
+            onValueChange={(value) => onUpdate(item.id, 'category', value)} 
+            required={true}
+          />
+          
+          {showMerchant && (
+            <div className="relative">
+              <Store className="absolute left-3 top-2.5 h-4 w-4 text-[#86868B] dark:text-[#A1A1A6]" />
+              <Input
+                type="text"
+                value={item.merchant || ''}
+                onChange={(e) => onUpdate(item.id, 'merchant', e.target.value)}
+                placeholder="Merchant (optional)"
+                className="pl-9 rounded-xl bg-white/60 dark:bg-[#3A3A3C]/60 backdrop-blur-md shadow-sm border-[0.5px] border-[#DADADC] dark:border-[#48484A]"
+              />
+            </div>
+          )}
+          
+          <div className="relative">
+            <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-[#86868B] dark:text-[#A1A1A6]" />
+            <Input
+              type="number"
+              value={item.amount}
+              onChange={(e) => {
+                const value = parseFloat(e.target.value);
+                if (!isNaN(value)) {
+                  onUpdate(item.id, 'amount', value);
+                }
+              }}
+              placeholder="0.00"
+              step="0.01"
+              min="0.01"
+              max={item.amount + remainingAmount}
+              className="pl-9 rounded-xl bg-white/60 dark:bg-[#3A3A3C]/60 backdrop-blur-md shadow-sm border-[0.5px] border-[#DADADC] dark:border-[#48484A]"
+              required
+            />
+          </div>
+        </div>
       </div>
-      <button
-        type="button"
-        onClick={() => onRemove(item.id)}
-        className="p-1.5 rounded-full bg-[#FF3B30]/10 dark:bg-[#FF453A]/20 text-[#FF3B30] dark:text-[#FF453A] hover:bg-[#FF3B30]/20 dark:hover:bg-[#FF453A]/30 transition-colors"
-      >
-        <X className="h-4 w-4" />
-      </button>
-    </div>
+    </Card>
   );
 }
