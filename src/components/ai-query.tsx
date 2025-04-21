@@ -29,13 +29,14 @@ export function AIQuery({ onQuerySubmit }: AIQueryProps) {
   const [showHistory, setShowHistory] = useState<boolean>(false);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [hoverCategory, setHoverCategory] = useState<string | null>(null);
-  
+  const [submittedQuery, setSubmittedQuery] = useState<string>(''); // Track the submitted query separately
+
   const responseRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const historyRef = useRef<HTMLDivElement>(null);
-  
+
   const controls = useAnimation();
-  
+
   // Array of example questions with categories
   const exampleQuestions = [
     { text: "How much did I spend on groceries?", category: "spending" },
@@ -45,9 +46,9 @@ export function AIQuery({ onQuerySubmit }: AIQueryProps) {
     { text: "Show my spending by category", category: "insights" },
     { text: "Compare my income vs expenses", category: "analysis" }
   ];
-  
+
   const [currentExampleIndex, setCurrentExampleIndex] = useState<number>(0);
-  
+
   // Load previous conversations from localStorage
   useEffect(() => {
     try {
@@ -65,27 +66,27 @@ export function AIQuery({ onQuerySubmit }: AIQueryProps) {
       console.error('Error loading conversations:', error);
     }
   }, []);
-  
+
   // Save conversations to localStorage when updated
   useEffect(() => {
     if (conversations.length > 0) {
       localStorage.setItem('aiQueryConversations', JSON.stringify(conversations));
     }
   }, [conversations]);
-  
+
   // Cycle through example questions for the placeholder
   useEffect(() => {
     const intervalId = setInterval(() => {
       setCurrentExampleIndex((prevIndex) => (prevIndex + 1) % exampleQuestions.length);
     }, 5000);
-    
+
     return () => clearInterval(intervalId);
   }, []);
 
   // Handle conversation history toggling with animation
   const toggleHistory = () => {
     setShowHistory(prev => !prev);
-    
+
     if (historyRef.current) {
       if (!showHistory) {
         // Opening history
@@ -104,19 +105,19 @@ export function AIQuery({ onQuerySubmit }: AIQueryProps) {
       }
     }
   };
-  
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim() || isLoading) return;
-    
+
     setIsLoading(true);
-    setResponse(null);
+    setSubmittedQuery(query); // Store the submitted query
     setResponseAnimationComplete(false);
-    
+
     try {
       const aiResponse = await onQuerySubmit(query);
       setResponse(aiResponse);
-      
+
       // Save to conversation history
       const newConversation = {
         id: Date.now().toString(),
@@ -124,10 +125,10 @@ export function AIQuery({ onQuerySubmit }: AIQueryProps) {
         response: aiResponse,
         timestamp: new Date()
       };
-      
+
       setConversations(prev => [newConversation, ...prev]);
       setCurrentConversationId(newConversation.id);
-      
+
     } catch (error) {
       setResponse("Sorry, I couldn't process your query at this time.");
       console.error("Error querying AI:", error);
@@ -142,7 +143,7 @@ export function AIQuery({ onQuerySubmit }: AIQueryProps) {
       setTimeout(() => setResponseAnimationComplete(true), 500);
     }
   }, [response]);
-  
+
   // Load conversation from history
   const loadConversation = (id: string) => {
     const conversation = conversations.find(c => c.id === id);
@@ -152,7 +153,7 @@ export function AIQuery({ onQuerySubmit }: AIQueryProps) {
       setCurrentConversationId(id);
     }
   };
-  
+
   // Clear all history
   const clearHistory = () => {
     if (confirm("Are you sure you want to clear your conversation history?")) {
@@ -161,12 +162,12 @@ export function AIQuery({ onQuerySubmit }: AIQueryProps) {
       setShowHistory(false);
     }
   };
-  
+
   // Format timestamp to friendly string
   const formatTimestamp = (date: Date) => {
     const now = new Date();
     const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-    
+
     if (diffInHours < 1) {
       return 'Just now';
     } else if (diffInHours < 24) {
@@ -175,7 +176,7 @@ export function AIQuery({ onQuerySubmit }: AIQueryProps) {
       return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     }
   };
-  
+
   // Get category color based on category
   const getCategoryColor = (category: string) => {
     switch(category) {
@@ -309,7 +310,7 @@ export function AIQuery({ onQuerySubmit }: AIQueryProps) {
       <CardContent className="p-4 pt-5">
         {/* Main interaction area */}
         <AnimatePresence mode="wait">
-          {(response || isLoading) ? (
+          {(submittedQuery || isLoading) ? (
             <motion.div
               ref={responseRef}
               initial={{ opacity: 0, y: 10 }}
@@ -329,7 +330,7 @@ export function AIQuery({ onQuerySubmit }: AIQueryProps) {
                 >
                   <div className="flex items-start gap-2 justify-end">
                     <div className="px-4 py-2.5 bg-gradient-to-br from-[#007AFF] to-[#0A84FF] text-white rounded-2xl rounded-tr-sm shadow-sm">
-                      <p className="text-sm">{query}</p>
+                      <p className="text-sm">{submittedQuery}</p>
                     </div>
                     <div className="bg-[#F2F2F7] dark:bg-[#48484A] rounded-full h-8 w-8 flex items-center justify-center mt-1 shadow-sm">
                       <User className="h-4 w-4 text-[#8E8E93] dark:text-[#98989D]" />
@@ -397,8 +398,8 @@ export function AIQuery({ onQuerySubmit }: AIQueryProps) {
                   <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                     <Button 
                       onClick={() => {
-                        setQuery(query);
-                        setResponse(null);
+                        setSubmittedQuery('');
+                        setQuery(submittedQuery);
                         inputRef.current?.focus();
                       }}
                       size="sm"
@@ -413,8 +414,9 @@ export function AIQuery({ onQuerySubmit }: AIQueryProps) {
                   <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                     <Button 
                       onClick={() => {
-                        setQuery('');
+                        setSubmittedQuery('');
                         setResponse(null);
+                        setQuery('');
                         inputRef.current?.focus();
                       }}
                       size="sm"
@@ -563,12 +565,7 @@ export function AIQuery({ onQuerySubmit }: AIQueryProps) {
                     }
                   `}
                 >
-                  {isLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-[#8E8E93] dark:text-[#98989D]" />
-                  ) : (
-                    <Send className="h-4 w-4 text-white" />
-                  )}
-                  <span className="sr-only">Send query</span>
+                  <Send className="h-4 w-4 text-white dark:text-white" />
                 </Button>
               </motion.div>
             </div>

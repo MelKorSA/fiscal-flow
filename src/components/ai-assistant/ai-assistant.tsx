@@ -31,6 +31,7 @@ interface Conversation {
   response: string;
   timestamp: Date;
   group?: Conversation[];
+  isLoading?: boolean;
 }
 
 interface SuggestedQuestion {
@@ -175,38 +176,34 @@ export function AIAssistant({ onQuerySubmit }: AIAssistantProps) {
       setShowWelcomeScreen(false);
     }
 
+    // Create a temporary message with loading state
+    const tempMessageId = `temp_${Date.now()}`;
+    const newTempMessage = {
+      id: tempMessageId,
+      query: currentQuery,
+      response: "",
+      timestamp: new Date(),
+      isLoading: true
+    };
+    
+    // Add the temporary message to show user query and loading state
+    setActiveConversation(prev => [...prev, newTempMessage]);
+      
     try {
-      // Add the user query to active conversation immediately for better UX
-      const newUserMessage = {
-        id: `user_${Date.now()}`,
-        query: currentQuery,
-        response: "",
-        timestamp: new Date()
-      };
-      
-      setActiveConversation(prev => [...prev, newUserMessage]);
-      
       // Get AI response
       const aiResponse = await onQuerySubmit(currentQuery);
 
-      // Create AI response message
-      const newAiMessage = {
-        id: `ai_${Date.now()}`,
-        query: currentQuery,
-        response: aiResponse,
-        timestamp: new Date()
-      };
-
-      // Update active conversation with AI response
+      // Update conversation with actual response by replacing the temporary message
       setActiveConversation(prev => {
-        // Replace the temporary user message with the complete conversation
-        const updatedConversation = prev.filter(msg => msg.id !== newUserMessage.id);
-        updatedConversation.push({...newUserMessage, timestamp: new Date()}); // Add user message with fresh Date
-        updatedConversation.push(newAiMessage); // Add AI response
+        const updatedConversation = prev.map(msg => 
+          msg.id === tempMessageId ? 
+          { ...msg, response: aiResponse, isLoading: false } : 
+          msg
+        );
         return updatedConversation;
       });
       
-      // Update conversation history with proper Date objects
+      // Update conversation history
       setConversations(prev => {
         // Create a new conversation group for this exchange
         const newConversationGroup = {
@@ -215,8 +212,12 @@ export function AIAssistant({ onQuerySubmit }: AIAssistantProps) {
           response: aiResponse,
           timestamp: new Date(),
           group: [
-            {...newUserMessage, timestamp: new Date()},
-            {...newAiMessage, timestamp: new Date()}
+            {
+              id: `user_${Date.now()}`,
+              query: currentQuery,
+              response: aiResponse,
+              timestamp: new Date()
+            }
           ]
         };
         
@@ -224,20 +225,21 @@ export function AIAssistant({ onQuerySubmit }: AIAssistantProps) {
       });
       
       // Set current conversation ID
-      setCurrentConversationId(newAiMessage.id);
+      setCurrentConversationId(`group_${Date.now()}`);
       
     } catch (error) {
       const errorResponse = "Sorry, I couldn't process your query at this time.";
       
-      // Add error response to conversation
-      const errorMessage = {
-        id: `error_${Date.now()}`,
-        query: currentQuery,
-        response: errorResponse,
-        timestamp: new Date()
-      };
+      // Update the temporary message with error response
+      setActiveConversation(prev => {
+        const updatedConversation = prev.map(msg => 
+          msg.id === tempMessageId ? 
+          { ...msg, response: errorResponse, isLoading: false } : 
+          msg
+        );
+        return updatedConversation;
+      });
       
-      setActiveConversation(prev => [...prev, errorMessage]);
       console.error("Error querying AI:", error);
     } finally {
       setIsLoading(false);
@@ -543,12 +545,12 @@ export function AIAssistant({ onQuerySubmit }: AIAssistantProps) {
                           <div className="flex items-start gap-2">
                             <motion.div 
                               className="bg-[#EDF4FE] dark:bg-[#1C3049] rounded-full h-8 w-8 flex items-center justify-center mt-1 shadow-sm"
-                              animate={(isLoading && index === activeConversation.length - 1 && !message.response) ? 
+                              animate={(message.isLoading) ? 
                                 { rotate: 360 } : 
                                 { rotate: 0 }
                               }
                               transition={{ 
-                                repeat: (isLoading && index === activeConversation.length - 1 && !message.response) ? Infinity : 0, 
+                                repeat: (message.isLoading) ? Infinity : 0, 
                                 duration: 2, 
                                 ease: "linear" 
                               }}
@@ -556,8 +558,8 @@ export function AIAssistant({ onQuerySubmit }: AIAssistantProps) {
                               <Bot className="h-4 w-4 text-[#007AFF] dark:text-[#0A84FF]" />
                             </motion.div>
                             <div ref={index === activeConversation.length - 1 ? responseRef : null} 
-                                 className="px-4 py-3 bg-[#F2F2F7] dark:bg-[#38383A] text-[#1D1D1F] dark:text:white rounded-2xl rounded-tl-sm shadow-sm max-w-[80%]">
-                              {(isLoading && index === activeConversation.length - 1 && !message.response) ? (
+                                 className="px-4 py-3 bg-[#F2F2F7] dark:bg-[#38383A] text-[#1D1D1F] dark:text-white rounded-2xl rounded-tl-sm shadow-sm max-w-[80%]">
+                              {message.isLoading ? (
                                 <div className="flex gap-1.5 items-center py-1.5 min-w-[40px]">
                                   <motion.div 
                                     initial={{ y: 0 }}
@@ -601,7 +603,7 @@ export function AIAssistant({ onQuerySubmit }: AIAssistantProps) {
                       
                       {/* Add loading state if we're waiting for a response and there are no messages yet */}
                       {isLoading && activeConversation.length === 0 && (
-                        <>
+                        <div className="space-y-6">
                           {/* User query bubble for initial loading state */}
                           <div className="flex justify-end">
                             <div className="flex items-start gap-2 max-w-[80%]">
@@ -623,7 +625,7 @@ export function AIAssistant({ onQuerySubmit }: AIAssistantProps) {
                             >
                               <Bot className="h-4 w-4 text-[#007AFF] dark:text-[#0A84FF]" />
                             </motion.div>
-                            <div className="px-4 py-3 bg-[#F2F2F7] dark:bg-[#38383A] text-[#1D1D1F] dark:text:white rounded-2xl rounded-tl-sm shadow-sm max-w-[80%]">
+                            <div className="px-4 py-3 bg-[#F2F2F7] dark:bg-[#38383A] text-[#1D1D1F] dark:text-white rounded-2xl rounded-tl-sm shadow-sm max-w-[80%]">
                               <div className="flex gap-1.5 items-center py-1.5 min-w-[40px]">
                                 <motion.div 
                                   animate={{ y: [-2, 2, -2] }}
@@ -643,7 +645,7 @@ export function AIAssistant({ onQuerySubmit }: AIAssistantProps) {
                               </div>
                             </div>
                           </div>
-                        </>
+                        </div>
                       )}
                     </div>
                     
