@@ -211,7 +211,7 @@ Fiscal Flow is licensed under the MIT License - see the [LICENSE](LICENSE) file 
 
 ## 📞 Support
 
-For issues and features, please [open an issue](https://github.com/yourusername/fiscal-flow/issues) on GitHub.
+For issues and features, please [open an issue](https://github.com/WWI2196/fiscal-flow/issues) on GitHub.
 
 ---
 
