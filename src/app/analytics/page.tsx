@@ -13,8 +13,8 @@ import { TrendingUp, PieChart, BarChart3, CreditCard, Lightbulb } from 'lucide-r
 
 // Placeholder data fetching function - replace with your actual data fetching logic
 async function getAnalyticsData() {
-  // Simulate API call delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  // Remove artificial delay for faster initial loading
+  // await new Promise(resolve => setTimeout(resolve, 1000));
 
   // Replace with actual API calls to fetch expenses, income, balance, recurring transactions
   const expenses = [

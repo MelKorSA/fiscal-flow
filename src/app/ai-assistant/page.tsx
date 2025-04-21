@@ -64,11 +64,9 @@ export default function AIAssistantPage() {
     setAccounts(loadFromLocalStorage(LS_KEYS.ACCOUNTS, [], ['startDate']));
     setExpenses(loadFromLocalStorage(LS_KEYS.EXPENSES, [], ['date']));
     setIncome(loadFromLocalStorage(LS_KEYS.INCOME, [], ['date']));
-
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 800);
-    return () => clearTimeout(timer);
+    
+    // Remove loading delay - set isLoading to false immediately
+    setIsLoading(false);
   }, []);
 
   const handleAIQuery = async (query: string): Promise<string> => {

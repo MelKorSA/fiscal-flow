@@ -9,19 +9,45 @@ import { Input } from './ui/input'
 import { cn } from '@/lib/utils'
 import { AnimatePresence, motion } from 'framer-motion'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { usePathname } from 'next/navigation'
 
 interface DashboardHeaderProps {
   className?: string;
   onSearch?: (query: string) => void;
   title?: string;
   description?: string;
+}
+
+interface NavItemProps {
+  href: string;
+  icon: React.ReactNode;
+  text: string;
+  active?: boolean;
+}
+
+function NavItem({ href, icon, text, active }: NavItemProps) {
+  return (
+    <Link 
+      href={href}
+      prefetch={true} // Enable prefetching for faster page transitions
+      className={`
+        flex items-center gap-2 py-1.5 px-3 rounded-lg text-sm font-medium transition-colors
+        ${active 
+          ? 'bg-[#F2F2F7] dark:bg-[#38383A] text-[#1D1D1F] dark:text-white' 
+          : 'text-[#8E8E93] dark:text-[#98989D] hover:bg-[#F9F9FB] dark:hover:bg-[#28282A]'
+        }
+      `}
+    >
+      {icon}
+      <span>{text}</span>
+    </Link>
+  );
 }
 
 export function DashboardHeader({ className, onSearch, title, description }: DashboardHeaderProps) {
@@ -103,12 +129,12 @@ export function DashboardHeader({ className, onSearch, title, description }: Das
   
   // Navigation items
   const navItems = [
-    { href: '/dashboard', label: 'Dashboard', icon: Home },
-    { href: '/zero-budget', label: 'Zero-Budget', icon: Target },
-    { href: '/analytics', label: 'Analytics', icon: LineChart },
-    { href: '/debt-management', label: 'Debt Management', icon: CreditCard },
-    { href: '/freelance', label: 'Freelance Income', icon: Briefcase }, // Added Freelance Income item
-    { href: '/ai-assistant', label: 'AI Assistant', icon: BrainCircuit },
+    { href: '/dashboard', label: 'Dashboard', icon: <Home className="h-4 w-4" /> },
+    { href: '/zero-budget', label: 'Zero-Budget', icon: <Target className="h-4 w-4" /> },
+    { href: '/analytics', label: 'Analytics', icon: <LineChart className="h-4 w-4" /> },
+    { href: '/debt-management', label: 'Debt Management', icon: <CreditCard className="h-4 w-4" /> },
+    { href: '/freelance', label: 'Freelance Income', icon: <Briefcase className="h-4 w-4" /> }, // Added Freelance Income item
+    { href: '/ai-assistant', label: 'AI Assistant', icon: <BrainCircuit className="h-4 w-4" /> },
   ]
 
   const isActive = (path: string) => {
@@ -142,19 +168,13 @@ export function DashboardHeader({ className, onSearch, title, description }: Das
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-1 ml-2">
             {navItems.map((item) => (
-              <Link 
+              <NavItem 
                 key={item.href} 
                 href={item.href}
-                className={cn(
-                  "px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 flex items-center",
-                  isActive(item.href)
-                    ? "bg-[#F2F2F7] dark:bg-[#38383A] text-[#007AFF] dark:text-[#0A84FF]" 
-                    : "text-[#86868B] dark:text-[#A1A1A6] hover:bg-[#F2F2F7]/70 dark:hover:bg-[#38383A]/70"
-                )}
-              >
-                <item.icon className="h-4 w-4 mr-1.5" />
-                {item.label}
-              </Link>
+                icon={item.icon}
+                text={item.label}
+                active={isActive(item.href)}
+              />
             ))}
           </nav>
 
@@ -174,16 +194,12 @@ export function DashboardHeader({ className, onSearch, title, description }: Das
               <DropdownMenuContent align="start" className="w-56 mt-1">
                 {navItems.map((item) => (
                   <DropdownMenuItem key={item.href} asChild>
-                    <Link 
-                      href={item.href} 
-                      className={cn(
-                        "flex items-center justify-start cursor-pointer",
-                        isActive(item.href) && "bg-[#F2F2F7] dark:bg-[#38383A] text-[#007AFF] dark:text-[#0A84FF]"
-                      )}
-                    >
-                      <item.icon className="h-4 w-4 mr-2" />
-                      {item.label}
-                    </Link>
+                    <NavItem 
+                      href={item.href}
+                      icon={item.icon}
+                      text={item.label}
+                      active={isActive(item.href)}
+                    />
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>

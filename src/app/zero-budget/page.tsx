@@ -175,10 +175,8 @@ export default function ZeroBudgetPage() {
         }
       }
       
-      // Simulate loading state for better UX
-      setTimeout(() => {
-        setIsLoading(false);
-      }, 800);
+      // Remove loading delay - set isLoading to false immediately
+      setIsLoading(false);
     }
   }, []);
   

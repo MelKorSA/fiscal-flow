@@ -118,6 +118,7 @@ export function FreelanceDashboard() {
   const [isAddingIncome, setIsAddingIncome] = useState(false);
   const [sampleDataUsed, setSampleDataUsed] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
+  const [loading, setLoading] = useState(true); // Added loading state
   
   // Form state for new income entry
   const [newIncome, setNewIncome] = useState<Omit<FreelanceIncome, 'id' | 'hourlyRate'>>({
@@ -140,32 +141,28 @@ export function FreelanceDashboard() {
 
   // Load data from localStorage on component mount
   useEffect(() => {
-    const loadData = () => {
+    // Check if in browser environment
+    if (typeof window !== 'undefined') {
       try {
-        const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
-        if (savedData) {
-          const parsedData = JSON.parse(savedData);
+        const savedIncomes = localStorage.getItem('freelanceIncomes');
+        if (savedIncomes) {
+          const parsedIncomes = JSON.parse(savedIncomes);
           // Convert date strings back to Date objects
-          const processedData = parsedData.map((income: any) => ({
+          const incomesWithDates = parsedIncomes.map((income: any) => ({
             ...income,
             date: new Date(income.date),
-            hourlyRate: income.amount / income.hoursWorked
           }));
-          setFreelanceIncomes(processedData);
-          return true;
+          setFreelanceIncomes(incomesWithDates);
         }
-        return false;
+        
+        // Remove artificial delay - set loading to false immediately
+        setLoading(false);
       } catch (error) {
-        console.error("Error loading freelance data:", error);
-        return false;
+        console.error('Error loading freelance data:', error);
+        setLoading(false);
       }
-    };
-    
-    const hasData = loadData();
-    // Show instructions if first visit
-    const hasSeenInstructions = localStorage.getItem("freelance_instructions_seen");
-    if (!hasSeenInstructions) {
-      setShowInstructions(true);
+    } else {
+      setLoading(false);
     }
   }, []);
 

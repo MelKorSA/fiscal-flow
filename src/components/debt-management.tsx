@@ -84,6 +84,7 @@ export function DebtManagement() {
         console.error('Error fetching debts:', error);
         toast.error('Failed to load debt data');
       } finally {
+        // Remove artificial delay and set loading state to false immediately
         setIsLoading(false);
       }
     };
@@ -299,7 +300,7 @@ export function DebtManagement() {
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-[#1D1D1F] dark:text-white">Name</FormLabel>
+                        <FormLabel className="text-[#1D1D1F] dark:text:white">Name</FormLabel>
                         <FormControl>
                           <Input 
                             placeholder="E.g., Chase Credit Card" 
@@ -317,7 +318,7 @@ export function DebtManagement() {
                     name="type"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-[#1D1D1F] dark:text-white">Debt Type</FormLabel>
+                        <FormLabel className="text-[#1D1D1F] dark:text:white">Debt Type</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger className="border-[#E5E5EA] dark:border-[#38383A] focus:border-[#007AFF] dark:focus:border-[#0A84FF]">
@@ -342,7 +343,7 @@ export function DebtManagement() {
                     name="amount"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-[#1D1D1F] dark:text-white">Amount ($)</FormLabel>
+                        <FormLabel className="text-[#1D1D1F] dark:text:white">Amount ($)</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
@@ -362,7 +363,7 @@ export function DebtManagement() {
                     name="interestRate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-[#1D1D1F] dark:text-white">Interest Rate (%)</FormLabel>
+                        <FormLabel className="text-[#1D1D1F] dark:text:white">Interest Rate (%)</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
@@ -382,7 +383,7 @@ export function DebtManagement() {
                     name="minimumPayment"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-[#1D1D1F] dark:text-white">Minimum Payment ($)</FormLabel>
+                        <FormLabel className="text-[#1D1D1F] dark:text:white">Minimum Payment ($)</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
@@ -419,7 +420,7 @@ export function DebtManagement() {
                     )}
                     <Button 
                       type="submit" 
-                      className="bg-[#007AFF] hover:bg-[#0063CC] text-white"
+                      className="bg-[#007AFF] hover:bg-[#0063CC] text:white"
                     >
                       {editingDebtId ? 'Update Debt' : 'Add Debt'}
                     </Button>
@@ -432,9 +433,9 @@ export function DebtManagement() {
         
         {/* Right column - Debt list and strategies */}
         <div className="lg:col-span-8 space-y-6">
-          <Card className="border-0 shadow-sm bg-white/80 dark:bg-[#2C2C2E]/80 backdrop-blur-md rounded-2xl overflow-hidden">
+          <Card className="border-0 shadow-sm bg:white/80 dark:bg-[#2C2C2E]/80 backdrop-blur-md rounded-2xl overflow-hidden">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-semibold text-[#1D1D1F] dark:text-white flex items-center">
+              <CardTitle className="text-lg font-semibold text-[#1D1D1F] dark:text:white flex items-center">
                 <LineChart className="mr-2 h-5 w-5 text-[#007AFF] dark:text-[#0A84FF]" />
                 Your Debt Strategies
               </CardTitle>
@@ -447,19 +448,19 @@ export function DebtManagement() {
                 <TabsList className="grid w-full grid-cols-3 p-1 mb-3 bg-[#F2F2F7] dark:bg-[#38383A] rounded-full">
                   <TabsTrigger 
                     value="all-debts" 
-                    className="rounded-full data-[state=active]:bg-white dark:data-[state=active]:bg-[#48484A] data-[state=active]:shadow-sm"
+                    className="rounded-full data-[state=active]:bg:white dark:data-[state=active]:bg-[#48484A] data-[state=active]:shadow-sm"
                   >
                     All Debts
                   </TabsTrigger>
                   <TabsTrigger 
                     value="avalanche" 
-                    className="rounded-full data-[state=active]:bg-white dark:data-[state=active]:bg-[#48484A] data-[state=active]:shadow-sm"
+                    className="rounded-full data-[state=active]:bg:white dark:data-[state=active]:bg-[#48484A] data-[state=active]:shadow-sm"
                   >
                     Avalanche Method
                   </TabsTrigger>
                   <TabsTrigger 
                     value="snowball" 
-                    className="rounded-full data-[state=active]:bg-white dark:data-[state=active]:bg-[#48484A] data-[state=active]:shadow-sm"
+                    className="rounded-full data-[state=active]:bg:white dark:data-[state=active]:bg-[#48484A] data-[state=active]:shadow-sm"
                   >
                     Snowball Method
                   </TabsTrigger>
@@ -472,12 +473,12 @@ export function DebtManagement() {
                       <Table>
                         <TableHeader className="bg-[#F2F2F7] dark:bg-[#38383A]">
                           <TableRow>
-                            <TableHead className="text-[#1D1D1F] dark:text-white font-medium">Name</TableHead>
-                            <TableHead className="text-[#1D1D1F] dark:text-white font-medium">Type</TableHead>
-                            <TableHead className="text-[#1D1D1F] dark:text-white font-medium text-right">Amount</TableHead>
-                            <TableHead className="text-[#1D1D1F] dark:text-white font-medium text-right">Interest</TableHead>
-                            <TableHead className="text-[#1D1D1F] dark:text-white font-medium text-right">Payment</TableHead>
-                            <TableHead className="text-[#1D1D1F] dark:text-white font-medium w-[100px]">Actions</TableHead>
+                            <TableHead className="text-[#1D1D1F] dark:text:white font-medium">Name</TableHead>
+                            <TableHead className="text-[#1D1D1F] dark:text:white font-medium">Type</TableHead>
+                            <TableHead className="text-[#1D1D1F] dark:text:white font-medium text-right">Amount</TableHead>
+                            <TableHead className="text-[#1D1D1F] dark:text:white font-medium text-right">Interest</TableHead>
+                            <TableHead className="text-[#1D1D1F] dark:text:white font-medium text-right">Payment</TableHead>
+                            <TableHead className="text-[#1D1D1F] dark:text:white font-medium w-[100px]">Actions</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -518,7 +519,7 @@ export function DebtManagement() {
                   ) : (
                     <div className="flex flex-col items-center justify-center p-8 text-center bg-[#F2F2F7] dark:bg-[#38383A]/30 rounded-lg">
                       <CreditCard className="h-12 w-12 text-[#86868B] dark:text-[#A1A1A6] mb-3 opacity-50" />
-                      <h3 className="text-lg font-medium text-[#1D1D1F] dark:text-white mb-1">No debts added yet</h3>
+                      <h3 className="text-lg font-medium text-[#1D1D1F] dark:text:white mb-1">No debts added yet</h3>
                       <p className="text-sm text-[#86868B] dark:text-[#A1A1A6] max-w-sm">
                         Start tracking your debts by adding your credit cards, loans, or other debts using the form.
                       </p>
@@ -531,7 +532,7 @@ export function DebtManagement() {
                   {debtsByHighestInterest.length > 0 ? (
                     <>
                       <div className="p-4 mb-4 bg-[#EDF4FE] dark:bg-[#1C3049] rounded-lg">
-                        <h3 className="text-lg font-medium text-[#1D1D1F] dark:text-white mb-1 flex items-center">
+                        <h3 className="text-lg font-medium text-[#1D1D1F] dark:text:white mb-1 flex items-center">
                           <TrendingDown className="mr-2 h-5 w-5 text-[#007AFF] dark:text-[#0A84FF]" />
                           Debt Avalanche Method
                         </h3>
@@ -544,11 +545,11 @@ export function DebtManagement() {
                         <Table>
                           <TableHeader className="bg-[#F2F2F7] dark:bg-[#38383A]">
                             <TableRow>
-                              <TableHead className="text-[#1D1D1F] dark:text-white font-medium">Priority</TableHead>
-                              <TableHead className="text-[#1D1D1F] dark:text-white font-medium">Name</TableHead>
-                              <TableHead className="text-[#1D1D1F] dark:text-white font-medium text-right">Amount</TableHead>
-                              <TableHead className="text-[#1D1D1F] dark:text-white font-medium text-right">Interest</TableHead>
-                              <TableHead className="text-[#1D1D1F] dark:text-white font-medium text-right">Payment</TableHead>
+                              <TableHead className="text-[#1D1D1F] dark:text:white font-medium">Priority</TableHead>
+                              <TableHead className="text-[#1D1D1F] dark:text:white font-medium">Name</TableHead>
+                              <TableHead className="text-[#1D1D1F] dark:text:white font-medium text-right">Amount</TableHead>
+                              <TableHead className="text-[#1D1D1F] dark:text:white font-medium text-right">Interest</TableHead>
+                              <TableHead className="text-[#1D1D1F] dark:text:white font-medium text-right">Payment</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -556,7 +557,7 @@ export function DebtManagement() {
                               <TableRow key={debt.id} className={index === 0 ? "bg-[#EDF4FE]/30 dark:bg-[#1C3049]/30" : ""}>
                                 <TableCell className="font-medium">
                                   {index === 0 ? (
-                                    <span className="inline-flex items-center justify-center px-2 py-1 rounded-full bg-[#007AFF] text-white text-xs font-medium">
+                                    <span className="inline-flex items-center justify-center px-2 py-1 rounded-full bg-[#007AFF] text:white text-xs font-medium">
                                       Focus
                                     </span>
                                   ) : (
@@ -578,7 +579,7 @@ export function DebtManagement() {
                   ) : (
                     <div className="flex flex-col items-center justify-center p-8 text-center bg-[#F2F2F7] dark:bg-[#38383A]/30 rounded-lg">
                       <TrendingDown className="h-12 w-12 text-[#86868B] dark:text-[#A1A1A6] mb-3 opacity-50" />
-                      <h3 className="text-lg font-medium text-[#1D1D1F] dark:text-white mb-1">No debts to display</h3>
+                      <h3 className="text-lg font-medium text-[#1D1D1F] dark:text:white mb-1">No debts to display</h3>
                       <p className="text-sm text-[#86868B] dark:text-[#A1A1A6] max-w-sm">
                         Add your debts to see the avalanche payoff strategy.
                       </p>
@@ -591,7 +592,7 @@ export function DebtManagement() {
                   {debtsByLowestAmount.length > 0 ? (
                     <>
                       <div className="p-4 mb-4 bg-[#E5F8EF] dark:bg-[#0C372A] rounded-lg">
-                        <h3 className="text-lg font-medium text-[#1D1D1F] dark:text-white mb-1 flex items-center">
+                        <h3 className="text-lg font-medium text-[#1D1D1F] dark:text:white mb-1 flex items-center">
                           <BadgeDollarSign className="mr-2 h-5 w-5 text-[#34C759] dark:text-[#30D158]" />
                           Debt Snowball Method
                         </h3>
@@ -604,11 +605,11 @@ export function DebtManagement() {
                         <Table>
                           <TableHeader className="bg-[#F2F2F7] dark:bg-[#38383A]">
                             <TableRow>
-                              <TableHead className="text-[#1D1D1F] dark:text-white font-medium">Priority</TableHead>
-                              <TableHead className="text-[#1D1D1F] dark:text-white font-medium">Name</TableHead>
-                              <TableHead className="text-[#1D1D1F] dark:text-white font-medium text-right">Amount</TableHead>
-                              <TableHead className="text-[#1D1D1F] dark:text-white font-medium text-right">Interest</TableHead>
-                              <TableHead className="text-[#1D1D1F] dark:text-white font-medium text-right">Payment</TableHead>
+                              <TableHead className="text-[#1D1D1F] dark:text:white font-medium">Priority</TableHead>
+                              <TableHead className="text-[#1D1D1F] dark:text:white font-medium">Name</TableHead>
+                              <TableHead className="text-[#1D1D1F] dark:text:white font-medium text-right">Amount</TableHead>
+                              <TableHead className="text-[#1D1D1F] dark:text:white font-medium text-right">Interest</TableHead>
+                              <TableHead className="text-[#1D1D1F] dark:text:white font-medium text-right">Payment</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -616,7 +617,7 @@ export function DebtManagement() {
                               <TableRow key={debt.id} className={index === 0 ? "bg-[#E5F8EF]/30 dark:bg-[#0C372A]/30" : ""}>
                                 <TableCell className="font-medium">
                                   {index === 0 ? (
-                                    <span className="inline-flex items-center justify-center px-2 py-1 rounded-full bg-[#34C759] text-white text-xs font-medium">
+                                    <span className="inline-flex items-center justify-center px-2 py-1 rounded-full bg-[#34C759] text:white text-xs font-medium">
                                       Focus
                                     </span>
                                   ) : (
@@ -638,7 +639,7 @@ export function DebtManagement() {
                   ) : (
                     <div className="flex flex-col items-center justify-center p-8 text-center bg-[#F2F2F7] dark:bg-[#38383A]/30 rounded-lg">
                       <BadgeDollarSign className="h-12 w-12 text-[#86868B] dark:text-[#A1A1A6] mb-3 opacity-50" />
-                      <h3 className="text-lg font-medium text-[#1D1D1F] dark:text-white mb-1">No debts to display</h3>
+                      <h3 className="text-lg font-medium text-[#1D1D1F] dark:text:white mb-1">No debts to display</h3>
                       <p className="text-sm text-[#86868B] dark:text-[#A1A1A6] max-w-sm">
                         Add your debts to see the snowball payoff strategy.
                       </p>
