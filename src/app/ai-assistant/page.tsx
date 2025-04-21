@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { AIAssistant } from '@/components/ai-assistant/ai-assistant';
 import { DashboardHeader } from '@/components/dashboard-header';
@@ -10,6 +10,11 @@ interface AIAssistantPageProps {}
 
 export default function AIAssistantPage() {
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Add effect to scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   const handleAIQuery = async (query: string): Promise<string> => {
     toast.info("Processing your question...");

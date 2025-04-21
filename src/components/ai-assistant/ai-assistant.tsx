@@ -30,6 +30,7 @@ interface Conversation {
   query: string;
   response: string;
   timestamp: Date;
+  group?: Conversation[];
 }
 
 interface SuggestedQuestion {
@@ -40,7 +41,6 @@ interface SuggestedQuestion {
 export function AIAssistant({ onQuerySubmit }: AIAssistantProps) {
   // State management
   const [query, setQuery] = useState<string>('');
-  const [response, setResponse] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isFocused, setIsFocused] = useState<boolean>(false);
   const [responseAnimationComplete, setResponseAnimationComplete] = useState<boolean>(false);
@@ -49,6 +49,7 @@ export function AIAssistant({ onQuerySubmit }: AIAssistantProps) {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [currentExampleIndex, setCurrentExampleIndex] = useState<number>(0);
   const [showWelcomeScreen, setShowWelcomeScreen] = useState<boolean>(true);
+  const [activeConversation, setActiveConversation] = useState<Conversation[]>([]);
 
   // References
   const responseRef = useRef<HTMLDivElement>(null);
@@ -77,17 +78,45 @@ export function AIAssistant({ onQuerySubmit }: AIAssistantProps) {
       const savedConversations = localStorage.getItem('aiAssistantConversations');
       if (savedConversations) {
         const parsed = JSON.parse(savedConversations);
-        // Convert string dates back to Date objects
-        const withDates = parsed.map((conv: any) => ({
-          ...conv,
-          timestamp: new Date(conv.timestamp)
-        }));
+        // Convert string dates back to Date objects (recursively for nested groups)
+        const withDates = parsed.map((conv: any) => {
+          // Convert top-level timestamp
+          const updatedConv = {
+            ...conv,
+            timestamp: new Date(conv.timestamp)
+          };
+          
+          // Handle group conversations if they exist
+          if (updatedConv.group && Array.isArray(updatedConv.group)) {
+            updatedConv.group = updatedConv.group.map((groupMsg: any) => ({
+              ...groupMsg,
+              timestamp: new Date(groupMsg.timestamp)
+            }));
+          }
+          
+          return updatedConv;
+        });
+        
         setConversations(withDates);
-        setShowWelcomeScreen(false);
+        
+        // Initialize with most recent conversation if it exists
+        if (withDates.length > 0) {
+          const latestConversation = withDates[0];
+          // Ensure we're working with an array of messages
+          const latestConversationGroup = latestConversation.group && Array.isArray(latestConversation.group) 
+            ? latestConversation.group 
+            : [latestConversation];
+          
+          setActiveConversation(latestConversationGroup);
+          setShowWelcomeScreen(false);
+        }
       }
     } catch (error) {
       console.error('Error loading conversations:', error);
     }
+    
+    // Scroll to top when the component mounts
+    window.scrollTo(0, 0);
   }, []);
 
   // Save conversations to localStorage
@@ -112,24 +141,24 @@ export function AIAssistant({ onQuerySubmit }: AIAssistantProps) {
   // Scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [response, conversations]);
+  }, [activeConversation]);
 
   // Handle animation completion
   useEffect(() => {
-    if (response && responseRef.current) {
+    if (responseAnimationComplete && responseRef.current) {
       setTimeout(() => setResponseAnimationComplete(true), 500);
     }
-  }, [response]);
+  }, [responseAnimationComplete]);
 
   // After receiving response
   useEffect(() => {
-    if (response && response.includes("AI service is currently in demo mode")) {
+    if (activeConversation.length > 0 && activeConversation[activeConversation.length - 1].response.includes("AI service is currently in demo mode")) {
       toast.info(
         "AI Assistant is running in demo mode. To enable full functionality, configure the GOOGLE_GENAI_API_KEY environment variable.",
         { duration: 10000 }
       );
     }
-  }, [response]);
+  }, [activeConversation]);
 
   // Handle query submission
   const handleSubmit = async (e: React.FormEvent) => {
@@ -139,51 +168,124 @@ export function AIAssistant({ onQuerySubmit }: AIAssistantProps) {
     const currentQuery = query;
     setQuery('');
     setIsLoading(true);
-    setResponse(null);
     setResponseAnimationComplete(false);
+    
+    // Clear the welcome screen immediately when submitting a question
+    if (showWelcomeScreen) {
+      setShowWelcomeScreen(false);
+    }
 
     try {
+      // Add the user query to active conversation immediately for better UX
+      const newUserMessage = {
+        id: `user_${Date.now()}`,
+        query: currentQuery,
+        response: "",
+        timestamp: new Date()
+      };
+      
+      setActiveConversation(prev => [...prev, newUserMessage]);
+      
+      // Get AI response
       const aiResponse = await onQuerySubmit(currentQuery);
 
-      // Generate a unique ID for this conversation
-      const newId = `conv_${Date.now()}`;
-      const newConversation = {
-        id: newId,
+      // Create AI response message
+      const newAiMessage = {
+        id: `ai_${Date.now()}`,
         query: currentQuery,
         response: aiResponse,
         timestamp: new Date()
       };
 
-      setResponse(aiResponse);
-      setConversations(prev => [newConversation, ...prev]);
-      setCurrentConversationId(newId);
+      // Update active conversation with AI response
+      setActiveConversation(prev => {
+        // Replace the temporary user message with the complete conversation
+        const updatedConversation = prev.filter(msg => msg.id !== newUserMessage.id);
+        updatedConversation.push({...newUserMessage, timestamp: new Date()}); // Add user message with fresh Date
+        updatedConversation.push(newAiMessage); // Add AI response
+        return updatedConversation;
+      });
+      
+      // Update conversation history with proper Date objects
+      setConversations(prev => {
+        // Create a new conversation group for this exchange
+        const newConversationGroup = {
+          id: `group_${Date.now()}`,
+          query: currentQuery,
+          response: aiResponse,
+          timestamp: new Date(),
+          group: [
+            {...newUserMessage, timestamp: new Date()},
+            {...newAiMessage, timestamp: new Date()}
+          ]
+        };
+        
+        return [newConversationGroup, ...prev];
+      });
+      
+      // Set current conversation ID
+      setCurrentConversationId(newAiMessage.id);
       
     } catch (error) {
-      setResponse("Sorry, I couldn't process your query at this time.");
+      const errorResponse = "Sorry, I couldn't process your query at this time.";
+      
+      // Add error response to conversation
+      const errorMessage = {
+        id: `error_${Date.now()}`,
+        query: currentQuery,
+        response: errorResponse,
+        timestamp: new Date()
+      };
+      
+      setActiveConversation(prev => [...prev, errorMessage]);
       console.error("Error querying AI:", error);
     } finally {
       setIsLoading(false);
+      setResponseAnimationComplete(true);
+      
+      // Scroll to bottom after response
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
     }
   };
 
   // Start a new conversation
   const startNewConversation = () => {
     setQuery('');
-    setResponse(null);
+    setActiveConversation([]);
     setCurrentConversationId(null);
     setResponseAnimationComplete(false);
     setShowWelcomeScreen(true);
-    inputRef.current?.focus();
+    setShowHistory(false); // Hide history when starting a new conversation
+    
+    // Add a small delay to ensure UI updates before focusing
+    setTimeout(() => {
+      inputRef.current?.focus();
+      // Scroll to top when creating a new conversation
+      window.scrollTo(0, 0);
+      if (chatContainerRef.current) {
+        chatContainerRef.current.scrollTop = 0;
+      }
+    }, 100);
   };
 
   // Load a conversation from history
   const loadConversation = (id: string) => {
     const conversation = conversations.find(c => c.id === id);
     if (conversation) {
+      const conversationGroup = conversation.group || [conversation];
+      setActiveConversation(conversationGroup);
       setQuery('');
-      setResponse(conversation.response);
       setCurrentConversationId(id);
       setResponseAnimationComplete(true);
+      setShowWelcomeScreen(false);
+      setShowHistory(false);
+      
+      // Scroll to top when loading a conversation
+      if (chatContainerRef.current) {
+        chatContainerRef.current.scrollTop = 0;
+      }
     }
   };
 
@@ -199,6 +301,10 @@ export function AIAssistant({ onQuerySubmit }: AIAssistantProps) {
 
   // Format timestamp to friendly string
   const formatTimestamp = (date: Date) => {
+    if (!(date instanceof Date)) {
+      return 'Just now';
+    }
+    
     const now = new Date();
     const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
     
@@ -254,7 +360,7 @@ export function AIAssistant({ onQuerySubmit }: AIAssistantProps) {
             </div>
             
             <div className="flex items-center gap-2">
-              {conversations.length > 0 && (
+              {(activeConversation.length > 0 || conversations.length > 0) && (
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                   <Button
                     onClick={startNewConversation}
@@ -417,72 +523,15 @@ export function AIAssistant({ onQuerySubmit }: AIAssistantProps) {
                     animate={{ opacity: 1 }}
                     className="space-y-6"
                   >
-                    {/* Display current conversation or first from history */}
-                    {response ? (
-                      <div className="space-y-6">
-                        {/* User query bubble */}
-                        <div className="flex justify-end">
-                          <div className="flex items-start gap-2 max-w-[80%]">
-                            <div className="bg-gradient-to-br from-[#007AFF] to-[#0A84FF] text-white px-4 py-3 rounded-2xl rounded-tr-sm shadow-sm">
-                              <p className="text-sm">{query || conversations.find(c => c.id === currentConversationId)?.query}</p>
-                            </div>
-                            <div className="bg-[#F2F2F7] dark:bg-[#48484A] rounded-full h-8 w-8 flex items-center justify-center mt-1 shadow-sm">
-                              <User className="h-4 w-4 text-[#8E8E93] dark:text-[#98989D]" />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* AI response bubble */}
-                        <div className="flex items-start gap-2">
-                          <motion.div 
-                            className="bg-[#EDF4FE] dark:bg-[#1C3049] rounded-full h-8 w-8 flex items-center justify-center mt-1 shadow-sm"
-                            initial={{ rotate: 0 }}
-                            animate={isLoading ? { rotate: 360 } : { rotate: 0 }}
-                            transition={{ 
-                              repeat: isLoading ? Infinity : 0, 
-                              duration: 2, 
-                              ease: "linear" 
-                            }}
-                          >
-                            <Bot className="h-4 w-4 text-[#007AFF] dark:text-[#0A84FF]" />
-                          </motion.div>
-                          <div ref={responseRef} className="px-4 py-3 bg-[#F2F2F7] dark:bg-[#38383A] text-[#1D1D1F] dark:text:white rounded-2xl rounded-tl-sm shadow-sm max-w-[80%]">
-                            {isLoading ? (
-                              <div className="flex gap-1.5 items-center py-1.5">
-                                <motion.div 
-                                  initial={{ y: 0 }}
-                                  animate={{ y: [-2, 2, -2] }}
-                                  transition={{ repeat: Infinity, duration: 1.5 }}
-                                  className="h-2 w-2 bg-[#8E8E93] dark:bg-[#98989D] rounded-full" 
-                                />
-                                <motion.div 
-                                  initial={{ y: 0 }}
-                                  animate={{ y: [-2, 2, -2] }}
-                                  transition={{ repeat: Infinity, duration: 1.5, delay: 0.2 }}
-                                  className="h-2 w-2 bg-[#8E8E93] dark:bg-[#98989D] rounded-full" 
-                                />
-                                <motion.div 
-                                  initial={{ y: 0 }}
-                                  animate={{ y: [-2, 2, -2] }}
-                                  transition={{ repeat: Infinity, duration: 1.5, delay: 0.4 }}
-                                  className="h-2 w-2 bg-[#8E8E93] dark:bg-[#98989D] rounded-full" 
-                                />
-                              </div>
-                            ) : (
-                              <p className="text-sm whitespace-pre-line">{response}</p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      // Display history
-                      conversations.slice(0, 1).map((conv) => (
-                        <div key={conv.id} className="space-y-6">
-                          {/* User query */}
+                    {/* Display active conversation */}
+                    <div className="space-y-6">
+                      {activeConversation.map((message, index) => (
+                        <React.Fragment key={message.id || index}>
+                          {/* User query bubble */}
                           <div className="flex justify-end">
                             <div className="flex items-start gap-2 max-w-[80%]">
                               <div className="bg-gradient-to-br from-[#007AFF] to-[#0A84FF] text-white px-4 py-3 rounded-2xl rounded-tr-sm shadow-sm">
-                                <p className="text-sm">{conv.query}</p>
+                                <p className="text-sm">{message.query}</p>
                               </div>
                               <div className="bg-[#F2F2F7] dark:bg-[#48484A] rounded-full h-8 w-8 flex items-center justify-center mt-1 shadow-sm">
                                 <User className="h-4 w-4 text-[#8E8E93] dark:text-[#98989D]" />
@@ -490,28 +539,116 @@ export function AIAssistant({ onQuerySubmit }: AIAssistantProps) {
                             </div>
                           </div>
 
-                          {/* AI response */}
+                          {/* AI response bubble */}
                           <div className="flex items-start gap-2">
-                            <div className="bg-[#EDF4FE] dark:bg-[#1C3049] rounded-full h-8 w-8 flex items-center justify-center mt-1 shadow-sm">
+                            <motion.div 
+                              className="bg-[#EDF4FE] dark:bg-[#1C3049] rounded-full h-8 w-8 flex items-center justify-center mt-1 shadow-sm"
+                              animate={(isLoading && index === activeConversation.length - 1 && !message.response) ? 
+                                { rotate: 360 } : 
+                                { rotate: 0 }
+                              }
+                              transition={{ 
+                                repeat: (isLoading && index === activeConversation.length - 1 && !message.response) ? Infinity : 0, 
+                                duration: 2, 
+                                ease: "linear" 
+                              }}
+                            >
                               <Bot className="h-4 w-4 text-[#007AFF] dark:text-[#0A84FF]" />
+                            </motion.div>
+                            <div ref={index === activeConversation.length - 1 ? responseRef : null} 
+                                 className="px-4 py-3 bg-[#F2F2F7] dark:bg-[#38383A] text-[#1D1D1F] dark:text:white rounded-2xl rounded-tl-sm shadow-sm max-w-[80%]">
+                              {(isLoading && index === activeConversation.length - 1 && !message.response) ? (
+                                <div className="flex gap-1.5 items-center py-1.5 min-w-[40px]">
+                                  <motion.div 
+                                    initial={{ y: 0 }}
+                                    animate={{ y: [-2, 2, -2] }}
+                                    transition={{ repeat: Infinity, duration: 1.5 }}
+                                    className="h-2 w-2 bg-[#8E8E93] dark:bg-[#98989D] rounded-full" 
+                                  />
+                                  <motion.div 
+                                    initial={{ y: 0 }}
+                                    animate={{ y: [-2, 2, -2] }}
+                                    transition={{ repeat: Infinity, duration: 1.5, delay: 0.2 }}
+                                    className="h-2 w-2 bg-[#8E8E93] dark:bg-[#98989D] rounded-full" 
+                                  />
+                                  <motion.div 
+                                    initial={{ y: 0 }}
+                                    animate={{ y: [-2, 2, -2] }}
+                                    transition={{ repeat: Infinity, duration: 1.5, delay: 0.4 }}
+                                    className="h-2 w-2 bg-[#8E8E93] dark:bg-[#98989D] rounded-full" 
+                                  />
+                                </div>
+                              ) : (
+                                <p className="text-sm whitespace-pre-line">{message.response}</p>
+                              )}
                             </div>
-                            <div className="px-4 py-3 bg-[#F2F2F7] dark:bg-[#38383A] text-[#1D1D1F] dark:text:white rounded-2xl rounded-tl-sm shadow-sm max-w-[80%]">
-                              <p className="text-sm whitespace-pre-line">{conv.response}</p>
+                          </div>
+                          
+                          {/* Fixed timestamp rendering with safe checks */}
+                          {(index === activeConversation.length - 1 || 
+                           (activeConversation[index + 1] && 
+                            activeConversation[index + 1].timestamp instanceof Date &&
+                            message.timestamp instanceof Date &&
+                            (activeConversation[index + 1].timestamp.getTime() - message.timestamp.getTime() > 120000))) && (
+                            <div className="flex justify-center">
+                              <span className="text-xs text-[#8E8E93] dark:text-[#98989D]">
+                                {message.timestamp instanceof Date ? formatTimestamp(message.timestamp) : 'Just now'}
+                              </span>
+                            </div>
+                          )}
+                        </React.Fragment>
+                      ))}
+                      
+                      {/* Add loading state if we're waiting for a response and there are no messages yet */}
+                      {isLoading && activeConversation.length === 0 && (
+                        <>
+                          {/* User query bubble for initial loading state */}
+                          <div className="flex justify-end">
+                            <div className="flex items-start gap-2 max-w-[80%]">
+                              <div className="bg-gradient-to-br from-[#007AFF] to-[#0A84FF] text-white px-4 py-3 rounded-2xl rounded-tr-sm shadow-sm">
+                                <p className="text-sm">{query}</p>
+                              </div>
+                              <div className="bg-[#F2F2F7] dark:bg-[#48484A] rounded-full h-8 w-8 flex items-center justify-center mt-1 shadow-sm">
+                                <User className="h-4 w-4 text-[#8E8E93] dark:text-[#98989D]" />
+                              </div>
                             </div>
                           </div>
 
-                          {/* Timestamp */}
-                          <div className="flex justify-center">
-                            <span className="text-xs text-[#8E8E93] dark:text-[#98989D]">
-                              {formatTimestamp(conv.timestamp)}
-                            </span>
+                          {/* AI loading response bubble for initial state */}
+                          <div className="flex items-start gap-2">
+                            <motion.div 
+                              className="bg-[#EDF4FE] dark:bg-[#1C3049] rounded-full h-8 w-8 flex items-center justify-center mt-1 shadow-sm"
+                              animate={{ rotate: 360 }}
+                              transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                            >
+                              <Bot className="h-4 w-4 text-[#007AFF] dark:text-[#0A84FF]" />
+                            </motion.div>
+                            <div className="px-4 py-3 bg-[#F2F2F7] dark:bg-[#38383A] text-[#1D1D1F] dark:text:white rounded-2xl rounded-tl-sm shadow-sm max-w-[80%]">
+                              <div className="flex gap-1.5 items-center py-1.5 min-w-[40px]">
+                                <motion.div 
+                                  animate={{ y: [-2, 2, -2] }}
+                                  transition={{ repeat: Infinity, duration: 1.5 }}
+                                  className="h-2 w-2 bg-[#8E8E93] dark:bg-[#98989D] rounded-full" 
+                                />
+                                <motion.div 
+                                  animate={{ y: [-2, 2, -2] }}
+                                  transition={{ repeat: Infinity, duration: 1.5, delay: 0.2 }}
+                                  className="h-2 w-2 bg-[#8E8E93] dark:bg-[#98989D] rounded-full" 
+                                />
+                                <motion.div 
+                                  animate={{ y: [-2, 2, -2] }}
+                                  transition={{ repeat: Infinity, duration: 1.5, delay: 0.4 }}
+                                  className="h-2 w-2 bg-[#8E8E93] dark:bg-[#98989D] rounded-full" 
+                                />
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      ))
-                    )}
+                        </>
+                      )}
+                    </div>
                     
-                    {/* Show some suggested follow-up questions */}
-                    {response && responseAnimationComplete && !isLoading && (
+                    {/* Show suggested follow-up questions */}
+                    {responseAnimationComplete && !isLoading && (
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -539,7 +676,7 @@ export function AIAssistant({ onQuerySubmit }: AIAssistantProps) {
                     )}
 
                     {/* Action buttons */}
-                    {response && responseAnimationComplete && !isLoading && (
+                    {responseAnimationComplete && !isLoading && (
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -600,7 +737,7 @@ export function AIAssistant({ onQuerySubmit }: AIAssistantProps) {
                     onFocus={() => setIsFocused(true)}
                     onBlur={() => setIsFocused(false)}
                     className="border-0 bg-transparent focus-visible:ring-0 text-[#1D1D1F] dark:text:white placeholder:text-[#86868B] dark:placeholder:text-[#8E8E93] py-6 rounded-xl"
-                    suppressHydrationWarning={true} // Add suppressHydrationWarning
+                    suppressHydrationWarning={true}
                   />
                   <motion.div
                     whileHover={{ scale: 1.05 }}
