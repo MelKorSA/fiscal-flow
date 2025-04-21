@@ -18,8 +18,6 @@
 
 **Fiscal Flow** is a modern, open-source personal finance management application built with Next.js, TypeScript, and Prisma. It empowers users to take control of their financial lives with intuitive expense tracking, budget management, and AI-powered insights.
 
-**Fiscal Flow** is a modern, open-source personal finance management application built with Next.js, TypeScript, and Prisma. It empowers users to take control of their financial lives with intuitive expense tracking, budget management, and AI-powered insights.
-
 <div align="center">
   <h3>📊 Application Screenshots</h3>
 </div>
