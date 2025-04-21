@@ -100,7 +100,7 @@ Before setting up Fiscal Flow, ensure you have:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/fiscal-flow.git
+git clone https://github.com/WWI2196/fiscal-flow.git
 cd fiscal-flow
 ```
 
@@ -211,7 +211,7 @@ Fiscal Flow is licensed under the MIT License - see the [LICENSE](LICENSE) file 
 
 ## 📞 Support
 
-For issues and feature requests, please [open an issue](https://github.com/yourusername/fiscal-flow/issues) on GitHub.
+For issues and features, please [open an issue](https://github.com/yourusername/fiscal-flow/issues) on GitHub.
 
 ---
 
