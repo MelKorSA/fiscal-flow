@@ -1,7 +1,7 @@
 # Fiscal Flow
 
 <p align="center">
-  <img src="./public/images/fiscal-flow-banner.png" alt="Fiscal Flow Banner">
+  <img src="public/images/fiscal-flow-banner.png" alt="Fiscal Flow Banner">
 </p>
 
 <div align="center">
