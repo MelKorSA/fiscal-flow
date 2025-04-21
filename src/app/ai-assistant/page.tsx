@@ -16,12 +16,35 @@ export default function AIAssistantPage() {
     setIsLoading(true);
 
     try {
+      // Fetch required financial data from API endpoints
+      const [accountsResponse, expensesResponse, incomeResponse] = await Promise.all([
+        fetch('/api/accounts'),
+        fetch('/api/expenses'),
+        fetch('/api/income')
+      ]);
+
+      // Check if any API calls failed
+      if (!accountsResponse.ok || !expensesResponse.ok || !incomeResponse.ok) {
+        throw new Error("Failed to fetch required financial data");
+      }
+
+      // Parse the responses
+      const accounts = await accountsResponse.json();
+      const expenses = await expensesResponse.json();
+      const income = await incomeResponse.json();
+
+      // Call the AI query endpoint with all required data
       const response = await fetch('/api/ai-query', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({ 
+          query, 
+          accounts, 
+          expenses, 
+          income 
+        }),
       });
 
       // Log full response for debugging
