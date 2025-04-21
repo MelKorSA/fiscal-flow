@@ -1,97 +1,18 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { AIAssistant } from '@/components/ai-assistant/ai-assistant';
 import { DashboardHeader } from '@/components/dashboard-header';
-import { useRouter } from 'next/navigation';
 import { toast } from "sonner";
-import { parseISO, isValid } from 'date-fns';
-
-const LS_KEYS = {
-  ACCOUNTS: 'budgetAppAccounts',
-  EXPENSES: 'budgetAppExpenses',
-  INCOME: 'budgetAppIncome',
-};
-
-type Transaction = { id: string; accountId: string; amount: number; date: Date | string; description: string; };
-type Expense = Transaction & { category: string; };
-type Income = Transaction & { source: string; };
-type Account = { id: string; name: string; type: 'Bank Account' | 'Cash' | 'Fixed Deposit'; balance?: number; startDate?: Date | string; tenureMonths?: number; interestRate?: number; };
-
-const loadFromLocalStorage = <T,>(key: string, defaultValue: T, dateFields: string[] = []): T => {
-  if (typeof window === 'undefined') return defaultValue;
-  try {
-    const item = window.localStorage.getItem(key);
-    if (item) {
-      const parsed = JSON.parse(item);
-      const parseDates = (obj: any): any => {
-        if (!obj) return obj;
-        if (Array.isArray(obj)) {
-          return obj.map(parseDates);
-        } else if (typeof obj === 'object') {
-          const newObj: any = {};
-          for (const k in obj) {
-            if (dateFields.includes(k) && typeof obj[k] === 'string') {
-              const parsedDate = parseISO(obj[k]);
-              newObj[k] = isValid(parsedDate) ? parsedDate : null;
-            } else {
-              newObj[k] = parseDates(obj[k]);
-            }
-          }
-          return newObj;
-        }
-        return obj;
-      };
-      return parseDates(parsed) as T;
-    } else return defaultValue;
-  } catch (error) {
-    console.error(`Error reading localStorage key "${key}":`, error);
-    return defaultValue;
-  }
-};
 
 interface AIAssistantPageProps {}
 
 export default function AIAssistantPage() {
-  const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true);
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [income, setIncome] = useState<Income[]>([]);
-
-  useEffect(() => {
-    setAccounts(loadFromLocalStorage(LS_KEYS.ACCOUNTS, [], ['startDate']));
-    setExpenses(loadFromLocalStorage(LS_KEYS.EXPENSES, [], ['date']));
-    setIncome(loadFromLocalStorage(LS_KEYS.INCOME, [], ['date']));
-    
-    // Remove loading delay - set isLoading to false immediately
-    setIsLoading(false);
-  }, []);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleAIQuery = async (query: string): Promise<string> => {
     toast.info("Processing your question...");
-
-    const prepareDataForApi = (data: any[], dateFields: string[]): any[] => {
-      return data.map(item => {
-        const newItem = { ...item };
-        dateFields.forEach(field => {
-          if (newItem[field] instanceof Date && isValid(newItem[field])) {
-            newItem[field] = newItem[field].toISOString();
-          } else if (typeof newItem[field] !== 'string') {
-            delete newItem[field];
-          }
-        });
-        return newItem;
-      });
-    };
-
-    const apiPayload = {
-      query,
-      accounts: prepareDataForApi(accounts, ['startDate']),
-      expenses: prepareDataForApi(expenses, ['date']),
-      income: prepareDataForApi(income, ['date']),
-    };
 
     try {
       const response = await fetch('/api/ai-query', {
@@ -99,7 +20,7 @@ export default function AIAssistantPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(apiPayload),
+        body: JSON.stringify({ query }),
       });
 
       if (!response.ok) {
@@ -182,7 +103,7 @@ export default function AIAssistantPage() {
             Powered by Advanced Financial Analytics
           </h2>
           <p className="text-[#86868B] dark:text-[#A1A1A6] max-w-2xl mx-auto">
-            Our AI assistant analyzes your spending patterns, tracks your budget, and helps you understand your financial health with personalized recommendations.
+            Our AI assistant analyzes your spending patterns, tracks your budget, and helps you understand your financial health with personalized recommendations based on your PostgreSQL database.
           </p>
         </motion.div>
       </motion.main>
