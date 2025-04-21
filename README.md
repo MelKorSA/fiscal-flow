@@ -1,6 +1,6 @@
 # Fiscal Flow
 
-![Fiscal Flow Banner](./public/fiscal-flow-banner.png)
+![Fiscal Flow Banner](./public/images/fiscal-flow-banner.png)
 
 <div align="center">
   
