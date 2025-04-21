@@ -1,5 +1,9 @@
 import {genkit} from 'genkit';
 import {googleAI} from '@genkit-ai/googleai';
+import { EventEmitter } from 'events';
+
+// Increase the max listeners to prevent warnings
+EventEmitter.defaultMaxListeners = 15;
 
 // Log API key presence check
 const apiKey = process.env.GOOGLE_GENAI_API_KEY;
