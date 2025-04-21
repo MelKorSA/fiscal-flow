@@ -42,12 +42,10 @@ const debtFormSchema = z.object({
 
 // Component
 export function DebtManagement() {
-  // Local storage key
-  const LS_KEY_DEBTS = 'budgetAppDebts';
-
   // State
   const [debts, setDebts] = useState<Debt[]>([]);
   const [editingDebtId, setEditingDebtId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Form
   const form = useForm<z.infer<typeof debtFormSchema>>({
@@ -61,56 +59,92 @@ export function DebtManagement() {
     },
   });
 
-  // Load debts from local storage
+  // Load debts from database
   useEffect(() => {
-    const loadDebts = () => {
+    const fetchDebts = async () => {
       try {
-        const storedDebts = localStorage.getItem(LS_KEY_DEBTS);
-        if (storedDebts) {
-          const parsedDebts = JSON.parse(storedDebts);
-          // Convert date strings to Date objects
-          const formattedDebts = parsedDebts.map((debt: any) => ({
-            ...debt,
-            dueDate: debt.dueDate ? new Date(debt.dueDate) : undefined,
-            paymentDate: debt.paymentDate ? new Date(debt.paymentDate) : undefined,
-          }));
-          setDebts(formattedDebts);
+        setIsLoading(true);
+        const response = await fetch('/api/debts');
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch debts');
         }
+        
+        const data = await response.json();
+        
+        // Convert date strings to Date objects
+        const formattedDebts = data.map((debt: any) => ({
+          ...debt,
+          dueDate: debt.dueDate ? new Date(debt.dueDate) : undefined,
+          paymentDate: debt.paymentDate ? new Date(debt.paymentDate) : undefined,
+        }));
+        
+        setDebts(formattedDebts);
       } catch (error) {
-        console.error('Error loading debts from localStorage:', error);
-        toast.error('Failed to load debt data.');
+        console.error('Error fetching debts:', error);
+        toast.error('Failed to load debt data');
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    loadDebts();
+    fetchDebts();
   }, []);
 
-  // Save debts to local storage
-  useEffect(() => {
-    try {
-      localStorage.setItem(LS_KEY_DEBTS, JSON.stringify(debts));
-    } catch (error) {
-      console.error('Error saving debts to localStorage:', error);
-    }
-  }, [debts]);
-
   // Handle form submission
-  const onSubmit = (values: z.infer<typeof debtFormSchema>) => {
+  const onSubmit = async (values: z.infer<typeof debtFormSchema>) => {
     try {
       if (editingDebtId) {
         // Update existing debt
-        const updatedDebts = debts.map(debt => 
-          debt.id === editingDebtId ? { ...values, id: debt.id } : debt
+        const response = await fetch(`/api/debts?id=${editingDebtId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(values),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to update debt');
+        }
+
+        const updatedDebt = await response.json();
+        
+        // Update local state
+        setDebts(prevDebts => 
+          prevDebts.map(debt => 
+            debt.id === editingDebtId ? {
+              ...updatedDebt,
+              dueDate: updatedDebt.dueDate ? new Date(updatedDebt.dueDate) : undefined,
+              paymentDate: updatedDebt.paymentDate ? new Date(updatedDebt.paymentDate) : undefined,
+            } : debt
+          )
         );
-        setDebts(updatedDebts);
+        
         toast.success('Debt updated successfully!');
       } else {
         // Add new debt
-        const newDebt: Debt = {
-          ...values,
-          id: `debt_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
-        };
-        setDebts([...debts, newDebt]);
+        const response = await fetch('/api/debts', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(values),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to create debt');
+        }
+
+        const newDebt = await response.json();
+        
+        // Update local state
+        setDebts(prevDebts => [...prevDebts, {
+          ...newDebt,
+          dueDate: newDebt.dueDate ? new Date(newDebt.dueDate) : undefined,
+          paymentDate: newDebt.paymentDate ? new Date(newDebt.paymentDate) : undefined,
+        }]);
+        
         toast.success('New debt added successfully!');
       }
       
@@ -125,14 +159,23 @@ export function DebtManagement() {
       setEditingDebtId(null);
     } catch (error) {
       console.error('Error saving debt:', error);
-      toast.error('Failed to save debt.');
+      toast.error('Failed to save debt');
     }
   };
 
   // Handle debt deletion
-  const handleDeleteDebt = (id: string) => {
+  const handleDeleteDebt = async (id: string) => {
     try {
-      setDebts(debts.filter(debt => debt.id !== id));
+      const response = await fetch(`/api/debts?id=${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete debt');
+      }
+      
+      // Update local state
+      setDebts(prevDebts => prevDebts.filter(debt => debt.id !== id));
       toast.success('Debt deleted successfully!');
       
       // If we're currently editing this debt, reset the form
@@ -148,7 +191,7 @@ export function DebtManagement() {
       }
     } catch (error) {
       console.error('Error deleting debt:', error);
-      toast.error('Failed to delete debt.');
+      toast.error('Failed to delete debt');
     }
   };
 
@@ -178,6 +221,17 @@ export function DebtManagement() {
   
   // Sort debts by lowest amount (debt snowball method)
   const debtsByLowestAmount = [...debts].sort((a, b) => a.amount - b.amount);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-[#007AFF]"></div>
+          <p className="text-sm text-[#86868B] dark:text-[#A1A1A6]">Loading your debt information...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

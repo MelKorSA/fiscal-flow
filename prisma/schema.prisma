@@ -1,0 +1,138 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Account model (Bank Account, Cash, Fixed Deposit)
+model Account {
+  id           String    @id @default(cuid())
+  name         String
+  type         String    // 'Bank Account', 'Cash', 'Fixed Deposit'
+  balance      Float?
+  startDate    DateTime?
+  tenureMonths Int?
+  interestRate Float?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relationships
+  expenses     Expense[]
+  incomes      Income[]
+}
+
+// Expense model
+model Expense {
+  id          String   @id @default(cuid())
+  accountId   String
+  amount      Float
+  category    String
+  date        DateTime
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  account     Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+}
+
+// Income model
+model Income {
+  id          String   @id @default(cuid())
+  accountId   String
+  amount      Float
+  source      String
+  date        DateTime
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  account     Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+}
+
+// FreelanceIncome model
+model FreelanceIncome {
+  id           String   @id @default(cuid())
+  platform     String
+  client       String
+  project      String
+  amount       Float
+  currency     String   @default("USD")
+  date         DateTime
+  paymentStatus String  // 'paid', 'pending', 'overdue'
+  category     String
+  hoursWorked  Float
+  hourlyRate   Float?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// Debt model
+model Debt {
+  id               String    @id @default(cuid())
+  name             String
+  type             String    // 'Credit Card', 'Loan', 'Mortgage', 'Student Loan', 'Other'
+  amount           Float
+  interestRate     Float
+  minimumPayment   Float
+  dueDate          DateTime?
+  paymentDate      DateTime?
+  remainingPayments Int?
+  isPaid           Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+// Budget Allocation model
+model BudgetAllocation {
+  id         String  @id @default(cuid())
+  category   String
+  amount     Float
+  percentage Float
+  color      String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// Financial Goal model
+model FinancialGoal {
+  id            String   @id @default(cuid())
+  name          String
+  category      String
+  targetAmount  Float
+  currentAmount Float    @default(0)
+  priority      String   @default("medium") // 'low', 'medium', 'high'
+  targetDate    DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// Recurring Transaction model
+model RecurringTransaction {
+  id             String   @id @default(cuid())
+  accountId      String
+  amount         Float
+  description    String?
+  type           String   // 'expense', 'income'
+  category       String?  // For expenses
+  source         String?  // For income
+  frequency      String   // 'weekly', 'monthly', 'quarterly', 'yearly'
+  startDate      DateTime
+  lastProcessed  DateTime?
+  nextDue        DateTime
+  dayOfMonth     Int?
+  dayOfWeek      Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}

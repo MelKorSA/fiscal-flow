@@ -33,79 +33,21 @@ import DashboardLoading from './loading';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// --- Local Storage Keys & Types ---
-const LS_KEYS = {
-  ACCOUNTS: 'budgetAppAccounts',
-  EXPENSES: 'budgetAppExpenses',
-  INCOME: 'budgetAppIncome',
-};
+// --- Types ---
 type Transaction = { id: string; accountId: string; amount: number; date: Date; description: string; };
 type Expense = Transaction & { category: string; };
 type Income = Transaction & { source: string; };
 export type Account = { id: string; name: string; type: 'Bank Account' | 'Cash' | 'Fixed Deposit'; balance?: number; startDate?: Date; tenureMonths?: number; interestRate?: number; };
 
-// --- Default Initial Data ---
-const defaultInitialAccounts: Account[] = [
-  { id: 'acc1', name: 'Main Checking', type: 'Bank Account', balance: 1500.75 },
-  { id: 'acc2', name: 'Wallet', type: 'Cash', balance: 85.50 },
-  { id: 'fd1', name: 'Emergency FD', type: 'Fixed Deposit', balance: 5000, startDate: new Date(2023, 5, 1), tenureMonths: 12, interestRate: 4.5 }
-];
-
 // --- Income Sources ---
 const availableIncomeSources = ["Salary", "Freelance", "Investment", "Gift", "Bonus", "Interest", "Other"];
-
-// --- Local Storage Helper Functions ---
-const loadFromLocalStorage = <T,>(key: string, defaultValue: T, dateFields: string[] = []): T => { 
-  if (typeof window === 'undefined') return defaultValue;
-  try {
-    const item = window.localStorage.getItem(key);
-    if (item) {
-      const parsed = JSON.parse(item);
-      if (Array.isArray(parsed)) {
-        return parsed.map((obj: any) => {
-          dateFields.forEach(field => { 
-              if (obj[field] && typeof obj[field] === 'string') { 
-                  const parsedDate = parseISO(obj[field]);
-                  if (isValid(parsedDate)) {
-                      obj[field] = parsedDate;
-                  } else {
-                      console.warn(`Invalid date string found in LS for key ${key}, field ${field}: ${obj[field]}`);
-                      obj[field] = null;
-                  }
-              }
-            });
-          return obj;
-        }) as T;
-      } else if (typeof parsed === 'object' && parsed !== null) {
-         dateFields.forEach(field => { 
-             if (parsed[field] && typeof parsed[field] === 'string') { 
-                 const parsedDate = parseISO(parsed[field]);
-                  if (isValid(parsedDate)) {
-                     parsed[field] = parsedDate;
-                  } else {
-                      console.warn(`Invalid date string found in LS for key ${key}, field ${field}: ${parsed[field]}`);
-                      parsed[field] = null;
-                  }
-              }
-            });
-         return parsed as T;
-      }
-      return parsed as T; 
-    } else return defaultValue;
-  } catch (error) { console.error(`Error reading localStorage key "${key}":`, error); return defaultValue; }
-};
-
-const saveToLocalStorage = <T,>(key: string, value: T) => { 
-   if (typeof window === 'undefined') return;
-   try { window.localStorage.setItem(key, JSON.stringify(value)); } catch (error) { console.error(`Error setting localStorage key "${key}":`, error); }
-};
 
 function DashboardContent() {
   // --- State Initialization ---
   const [isLoading, setIsLoading] = useState(true);
-  const [accounts, setAccounts] = useState<Account[]>(() => loadFromLocalStorage(LS_KEYS.ACCOUNTS, defaultInitialAccounts, ['startDate']));
-  const [expenses, setExpenses] = useState<Expense[]>(() => loadFromLocalStorage(LS_KEYS.EXPENSES, [], ['date']));
-  const [income, setIncome] = useState<Income[]>(() => loadFromLocalStorage(LS_KEYS.INCOME, [], ['date']));
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [income, setIncome] = useState<Income[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [showAITooltip, setShowAITooltip] = useState(false);
@@ -118,14 +60,80 @@ function DashboardContent() {
   const columnTwoRef = useRef<HTMLDivElement>(null);
   const goalsSectionRef = useRef<HTMLDivElement>(null);
   
-  // Simulate loading for better UX
+  // Fetch data from API
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1200);
-    return () => clearTimeout(timer);
-  }, []);
+    const fetchAccounts = async () => {
+      try {
+        const response = await fetch('/api/accounts');
+        if (response.ok) {
+          const data = await response.json();
+          // Convert date strings to Date objects
+          const accountsWithDates = data.map((account: any) => ({
+            ...account,
+            startDate: account.startDate ? new Date(account.startDate) : undefined,
+          }));
+          setAccounts(accountsWithDates);
+        } else {
+          console.error('Failed to fetch accounts');
+          toast.error('Failed to load accounts');
+        }
+      } catch (error) {
+        console.error('Error fetching accounts:', error);
+        toast.error('Error loading accounts');
+      }
+    };
 
+    const fetchExpenses = async () => {
+      try {
+        const response = await fetch('/api/expenses');
+        if (response.ok) {
+          const data = await response.json();
+          // Convert date strings to Date objects
+          const expensesWithDates = data.map((expense: any) => ({
+            ...expense,
+            date: new Date(expense.date),
+          }));
+          setExpenses(expensesWithDates);
+        } else {
+          console.error('Failed to fetch expenses');
+          toast.error('Failed to load expenses');
+        }
+      } catch (error) {
+        console.error('Error fetching expenses:', error);
+        toast.error('Error loading expenses');
+      }
+    };
+
+    const fetchIncome = async () => {
+      try {
+        const response = await fetch('/api/income');
+        if (response.ok) {
+          const data = await response.json();
+          // Convert date strings to Date objects
+          const incomeWithDates = data.map((inc: any) => ({
+            ...inc,
+            date: new Date(inc.date),
+          }));
+          setIncome(incomeWithDates);
+        } else {
+          console.error('Failed to fetch income');
+          toast.error('Failed to load income');
+        }
+      } catch (error) {
+        console.error('Error fetching income:', error);
+        toast.error('Error loading income');
+      }
+    };
+
+    const loadAllData = async () => {
+      setIsLoading(true);
+      await Promise.all([fetchAccounts(), fetchExpenses(), fetchIncome()]);
+      setIsLoading(false);
+    };
+
+    loadAllData();
+  }, []);
+  
   // Setup content animations after loading
   useEffect(() => {
     if (!isLoading && contentRef.current) {
@@ -185,11 +193,6 @@ function DashboardContent() {
     }
   }, [isLoading]);
 
-  // --- Effects for Saving State ---
-  useEffect(() => { saveToLocalStorage(LS_KEYS.ACCOUNTS, accounts); }, [accounts]);
-  useEffect(() => { saveToLocalStorage(LS_KEYS.EXPENSES, expenses); }, [expenses]);
-  useEffect(() => { saveToLocalStorage(LS_KEYS.INCOME, income); }, [income]);
-
   // --- Search Handler ---
   const handleSearch = (query: string) => {
     setSearchQuery(query);
@@ -204,25 +207,37 @@ function DashboardContent() {
     setIsSearchModalOpen(false);
   };
 
-  // --- State Update Handlers with Toasts ---
-  const handleAddAccount = (newAccountData: Omit<Account, 'id'>) => {
+  // --- State Update Handlers with API calls ---
+  const handleAddAccount = async (newAccountData: Omit<Account, 'id'>) => {
     try {
-      let dateToAdd = newAccountData.startDate;
-      if (newAccountData.startDate && !(newAccountData.startDate instanceof Date)) {
-           const parsed = parseISO(newAccountData.startDate as any as string);
-           if (isValid(parsed)) dateToAdd = parsed; else dateToAdd = undefined;
+      const response = await fetch('/api/accounts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newAccountData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to add account');
       }
-      const accountToAdd: Account = { 
-          ...newAccountData, 
-          startDate: dateToAdd,
-          id: `acc_${Date.now()}_${Math.random().toString(36).substring(7)}`
-      };
-      setAccounts(prev => [...prev, accountToAdd]);
-      toast.success(`Account "${accountToAdd.name}" added successfully!`);
-    } catch (error) { console.error("Error adding account:", error); toast.error("Failed to add account."); }
+
+      const newAccount = await response.json();
+      
+      // Update local state with the new account
+      setAccounts(prev => [...prev, {
+        ...newAccount,
+        startDate: newAccount.startDate ? new Date(newAccount.startDate) : undefined,
+      }]);
+      
+      toast.success(`Account "${newAccount.name}" added successfully!`);
+    } catch (error) {
+      console.error("Error adding account:", error);
+      toast.error("Failed to add account");
+    }
   };
 
-  const handleAddExpense = (data: { 
+  const handleAddExpense = async (data: { 
     accountId: string; 
     amount: number; 
     category: string; 
@@ -230,97 +245,162 @@ function DashboardContent() {
     description: string;
     splitItems?: Array<{id: string; category: string; amount: number}>; 
   }) => {
-     try {
-       let dateToAdd = data.date;
-        if (data.date && !(data.date instanceof Date)) {
-           const parsed = parseISO(data.date as any as string);
-           if (isValid(parsed)) dateToAdd = parsed; 
-           else { toast.error("Invalid expense date."); return; }
+    try {
+      if (data.splitItems && data.splitItems.length > 0) {
+        // Handle split transactions
+        const promises = data.splitItems.map(splitItem => 
+          fetch('/api/expenses', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              accountId: data.accountId,
+              amount: splitItem.amount,
+              category: splitItem.category,
+              date: data.date,
+              description: `${data.description || 'Split transaction'} (${splitItem.category})`,
+            }),
+          })
+        );
+
+        await Promise.all(promises);
+        
+        // Refresh expenses data
+        const response = await fetch('/api/expenses');
+        if (response.ok) {
+          const updatedExpenses = await response.json();
+          setExpenses(updatedExpenses.map((expense: any) => ({
+            ...expense,
+            date: new Date(expense.date),
+          })));
+          
+          // Refresh accounts to get updated balances
+          const accountsResponse = await fetch('/api/accounts');
+          if (accountsResponse.ok) {
+            const updatedAccounts = await accountsResponse.json();
+            setAccounts(updatedAccounts.map((account: any) => ({
+              ...account,
+              startDate: account.startDate ? new Date(account.startDate) : undefined,
+            })));
+          }
+          
+          toast.success(`Split expense of $${data.amount.toFixed(2)} added across ${data.splitItems.length} categories.`);
+        }
+      } else {
+        // Handle regular expense
+        const response = await fetch('/api/expenses', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to add expense');
         }
 
-        if (data.splitItems && data.splitItems.length > 0) {
-          // Handle split transaction: create multiple expense entries
-          const splitTransactions = data.splitItems.map(splitItem => ({
-            id: `exp_${Date.now()}_${splitItem.id}`,
-            accountId: data.accountId,
-            amount: splitItem.amount,
-            category: splitItem.category,
-            date: dateToAdd,
-            description: `${data.description || 'Split transaction'} (${splitItem.category})`,
-          }));
-
-          // Add all split transactions to expenses
-          setExpenses(prev => [...prev, ...splitTransactions]);
-          
-          // Only deduct the total amount once from the account
-          setAccounts(prevAccounts => prevAccounts.map(acc => { 
-            if (acc.id === data.accountId && acc.type !== 'Fixed Deposit' && acc.balance !== undefined) { 
-              return { ...acc, balance: acc.balance - data.amount }; 
-            } 
-            return acc; 
-          }));
-          
-          toast.success(`Split expense of $${data.amount.toFixed(2)} added across ${splitTransactions.length} categories.`);
-        } else {
-          // Handle regular expense
-          const newExpense: Expense = { ...data, id: `exp_${Date.now()}`, date: dateToAdd };
-          setExpenses(prev => [...prev, newExpense]);
-          setAccounts(prevAccounts => prevAccounts.map(acc => { 
-            if (acc.id === data.accountId && acc.type !== 'Fixed Deposit' && acc.balance !== undefined) { 
-              return { ...acc, balance: acc.balance - data.amount }; 
-            } 
-            return acc; 
-          }));
-          toast.success(`Expense of $${data.amount.toFixed(2)} added.`);
+        const newExpense = await response.json();
+        
+        // Update local state with the new expense
+        setExpenses(prev => [...prev, {
+          ...newExpense,
+          date: new Date(newExpense.date),
+        }]);
+        
+        // Fetch updated account balances
+        const accountsResponse = await fetch('/api/accounts');
+        if (accountsResponse.ok) {
+          const updatedAccounts = await accountsResponse.json();
+          setAccounts(updatedAccounts.map((account: any) => ({
+            ...account,
+            startDate: account.startDate ? new Date(account.startDate) : undefined,
+          })));
         }
-     } catch (error) { console.error("Error adding expense:", error); toast.error("Failed to add expense."); }
+        
+        toast.success(`Expense of $${data.amount.toFixed(2)} added.`);
+      }
+    } catch (error) {
+      console.error("Error adding expense:", error);
+      toast.error("Failed to add expense");
+    }
   };
 
-  const handleAddIncome = (data: { accountId: string; amount: number; source: string; date: Date; description: string }) => {
-     try {
-       let dateToAdd = data.date;
-        if (data.date && !(data.date instanceof Date)) {
-           const parsed = parseISO(data.date as any as string);
-           if (isValid(parsed)) dateToAdd = parsed; 
-           else { toast.error("Invalid income date."); return; }
-        }
-        const newIncome: Income = { ...data, id: `inc_${Date.now()}`, date: dateToAdd };
-        setIncome(prev => [...prev, newIncome]);
-        setAccounts(prevAccounts => prevAccounts.map(acc => { 
-          if (acc.id === data.accountId && acc.type !== 'Fixed Deposit' && acc.balance !== undefined) { 
-            return { ...acc, balance: acc.balance + data.amount }; 
-          } 
-          return acc; 
-        }));
-        toast.success(`Income of $${data.amount.toFixed(2)} added.`);
-    } catch (error) { console.error("Error adding income:", error); toast.error("Failed to add income."); }
+  const handleAddIncome = async (data: { 
+    accountId: string; 
+    amount: number; 
+    source: string; 
+    date: Date; 
+    description: string 
+  }) => {
+    try {
+      const response = await fetch('/api/income', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to add income');
+      }
+
+      const newIncome = await response.json();
+      
+      // Update local state with the new income
+      setIncome(prev => [...prev, {
+        ...newIncome,
+        date: new Date(newIncome.date),
+      }]);
+      
+      // Fetch updated account balances
+      const accountsResponse = await fetch('/api/accounts');
+      if (accountsResponse.ok) {
+        const updatedAccounts = await accountsResponse.json();
+        setAccounts(updatedAccounts.map((account: any) => ({
+          ...account,
+          startDate: account.startDate ? new Date(account.startDate) : undefined,
+        })));
+      }
+      
+      toast.success(`Income of $${data.amount.toFixed(2)} added.`);
+    } catch (error) {
+      console.error("Error adding income:", error);
+      toast.error("Failed to add income");
+    }
   };
 
   // --- AI Query Handler ---
   const handleAIQuery = async (query: string): Promise<string> => {
-     toast.info("Processing your question...");
-     await new Promise(resolve => setTimeout(resolve, 1500)); 
-     const lowerQuery = query.toLowerCase();
-     if (lowerQuery.includes("total expense")) { return `Your total recorded expenses are $${totalExpenses.toFixed(2)}.`; }
-     if (lowerQuery.includes("total income")) { return `Your total recorded income is $${totalIncome.toFixed(2)}.`; }
-     if (lowerQuery.match(/how much.*spent on (\w+)/)) { 
-        const match = lowerQuery.match(/spent on (\w+)/); 
-        const category = match ? match[1] : null;
-        if (category) { 
-          const categoryExpenses = expenses.filter(e => e.category.toLowerCase().includes(category.toLowerCase())); 
-          const categoryTotal = categoryExpenses.reduce((sum, e) => sum + e.amount, 0); 
-          if (categoryTotal > 0) { 
-            return `You spent $${categoryTotal.toFixed(2)} on ${category}.`; 
-          } else { 
-            return `You haven't recorded any spending for the category: ${category}.`; 
-          } 
-        } else { 
-          return "Please specify a category (e.g., 'spent on groceries')."; 
-        }
-     }
-     if (lowerQuery.includes("balance")) { return `Your current liquid balance (Bank + Cash) is $${currentLiquidBalance.toFixed(2)}.`; }
-     return "I'm still learning! Try asking about your total income/expenses, spending on a specific category, or your current balance."; 
-   };
+    toast.info("Processing your question...");
+    
+    try {
+      const response = await fetch('/api/ai-query', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query,
+          accounts,
+          expenses,
+          income,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to process AI query');
+      }
+
+      const data = await response.json();
+      return data.response || "I couldn't find an answer to that question.";
+    } catch (error) {
+      console.error("Error with AI query:", error);
+      return "I'm having trouble processing your question. Please try again.";
+    }
+  };
 
   // --- Memoized Calculations ---
   const nonFdAccounts = useMemo(() => accounts.filter(acc => acc.type !== 'Fixed Deposit'), [accounts]);
