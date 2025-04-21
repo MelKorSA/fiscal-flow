@@ -13,13 +13,18 @@ import { AddAccountForm } from '@/components/add-account-form';
 import { FixedDepositList } from '@/components/fixed-deposit-list';
 import { Budget } from '@/components/budget';
 import { AIQuery } from '@/components/ai-query';
+import { FinancialGoals } from '@/components/financial-goals';
 import { DashboardHeader } from '@/components/dashboard-header';
 import { SearchResults } from '@/components/search-results/search-results';
 import { RecurringTransactionsList } from '@/components/recurring-transactions-list';
 import { AddRecurringTransactionForm } from '@/components/add-recurring-transaction-form';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle, LayoutGrid, Activity, Banknote, ChevronDown, BarChart3, CreditCard, ArrowUpCircle, Repeat, BrainCircuit } from 'lucide-react';
+import { 
+  PlusCircle, LayoutGrid, Activity, Banknote, ChevronDown, BarChart3, 
+  CreditCard, ArrowUpCircle, Repeat, BrainCircuit, Target, ChevronRight
+} from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { parseISO, isValid, format } from 'date-fns';
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -104,12 +109,14 @@ function DashboardContent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [showAITooltip, setShowAITooltip] = useState(false);
+  const [activeTab, setActiveTab] = useState('goals-overview');
   
   // Animation refs
   const contentRef = useRef<HTMLDivElement>(null);
   const metricsRef = useRef<HTMLDivElement>(null);
   const columnOneRef = useRef<HTMLDivElement>(null);
   const columnTwoRef = useRef<HTMLDivElement>(null);
+  const goalsSectionRef = useRef<HTMLDivElement>(null);
   
   // Simulate loading for better UX
   useEffect(() => {
@@ -122,12 +129,28 @@ function DashboardContent() {
   // Setup content animations after loading
   useEffect(() => {
     if (!isLoading && contentRef.current) {
-      // Stagger animation for main content sections
-      gsap.fromTo(
-        contentRef.current,
-        { opacity: 0, y: 20 },
-        { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' }
-      );
+      // Animate goals section first
+      if (goalsSectionRef.current) {
+        gsap.fromTo(
+          goalsSectionRef.current,
+          { opacity: 0, y: -20 },
+          { 
+            opacity: 1, 
+            y: 0, 
+            duration: 0.8, 
+            ease: 'power2.out',
+            onComplete: () => {
+              // After goals animation, animate other sections
+              // Stagger animation for main content sections
+              gsap.fromTo(
+                contentRef.current!,
+                { opacity: 0, y: 20 },
+                { opacity: 1, y: 0, duration: 0.6, delay: 0.2, ease: 'power2.out' }
+              );
+            }
+          }
+        );
+      }
       
       // Animate metrics cards with stagger
       if (metricsRef.current) {
@@ -141,6 +164,7 @@ function DashboardContent() {
             scale: 1,
             duration: 0.5, 
             stagger: 0.1, 
+            delay: 0.5,
             ease: 'back.out(1.2)',
           }
         );
@@ -150,13 +174,13 @@ function DashboardContent() {
       gsap.fromTo(
         columnOneRef.current,
         { opacity: 0, x: -20 },
-        { opacity: 1, x: 0, duration: 0.6, delay: 0.3, ease: 'power2.out' }
+        { opacity: 1, x: 0, duration: 0.6, delay: 0.7, ease: 'power2.out' }
       );
       
       gsap.fromTo(
         columnTwoRef.current,
         { opacity: 0, x: 20 },
-        { opacity: 1, x: 0, duration: 0.6, delay: 0.5, ease: 'power2.out' }
+        { opacity: 1, x: 0, duration: 0.6, delay: 0.9, ease: 'power2.out' }
       );
     }
   }, [isLoading]);
@@ -305,6 +329,10 @@ function DashboardContent() {
   const totalExpenses = useMemo(() => expenses.reduce((sum, item) => sum + item.amount, 0), [expenses]);
   const currentLiquidBalance = useMemo(() => nonFdAccounts.reduce((sum, acc) => sum + (acc.balance ?? 0), 0), [nonFdAccounts]);
   const currentDate = useMemo(() => format(new Date(), 'MMMM d, yyyy'), []);
+  const currentSavings = useMemo(() => {
+    // Calculate savings from income and expenses
+    return Math.max(0, totalIncome - totalExpenses);
+  }, [totalIncome, totalExpenses]);
 
   if (isLoading) {
     return <DashboardLoading />;
@@ -321,71 +349,123 @@ function DashboardContent() {
         isOpen={isSearchModalOpen}
         onClose={closeSearchModal}
       />
-      <main ref={contentRef} className="flex-1 overflow-y-auto p-5 md:p-6 lg:p-8 w-full">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
+      
+      {/* Goals Section - Positioned at the top */}
+      <div 
+        ref={goalsSectionRef} 
+        className="px-5 md:px-6 lg:px-8 pt-5 md:pt-6 lg:pt-8" 
+      >
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5">
           <div>
             <h1 className="text-3xl font-semibold text-[#1D1D1F] dark:text-white mb-1">
               Financial Dashboard
             </h1>
             <p className="text-[#86868B] dark:text-[#A1A1A6] text-sm font-medium">
-              Track, analyze, and manage your finances
+              Track your financial goals and progress
             </p>
           </div>
+          
           <div className="mt-4 sm:mt-0 flex items-center">
             <div className="bg-white/80 dark:bg-[#2C2C2E]/80 backdrop-blur-md px-4 py-2 rounded-full shadow-sm flex items-center gap-2">
               <span className="text-sm text-[#86868B] dark:text-[#A1A1A6] font-medium">{currentDate}</span>
             </div>
           </div>
         </div>
-
-        {/* Key Metrics Row */} 
-        <div ref={metricsRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <Card className="metric-card border-0 shadow-sm bg-white/80 dark:bg-[#2C2C2E]/80 backdrop-blur-md rounded-2xl overflow-hidden transition-all hover:shadow-md hover:scale-[1.02] duration-300">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-[#86868B] dark:text-[#A1A1A6]">Total Income</CardTitle>
-              <div className="p-1.5 bg-[#E5F8EF] dark:bg-[#0C372A] rounded-full">
-                <ArrowUpCircle className="h-5 w-5 text-[#34C759] dark:text-[#30D158]" />
-              </div>
-            </CardHeader>
-            <CardContent className="pt-4">
-              <div className="text-2xl font-semibold text-[#1D1D1F] dark:text-white">${totalIncome.toFixed(2)}</div>
-              <p className="text-xs text-[#86868B] dark:text-[#A1A1A6] mt-1.5">Across all income sources</p>
-            </CardContent>
-          </Card>
+        
+        {/* Tab Navigation for Goals and Overview */}
+        <Tabs defaultValue="goals-overview" className="w-full mb-5" onValueChange={setActiveTab}>
+          <TabsList className="grid w-full max-w-md grid-cols-2 mb-2">
+            <TabsTrigger value="goals-overview">
+              <Target className="h-4 w-4 mr-2" />
+              Goals Overview
+            </TabsTrigger>
+            <TabsTrigger value="financial-metrics">
+              <Activity className="h-4 w-4 mr-2" />
+              Financial Metrics
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+        
+        {/* Goals View */}
+        {activeTab === 'goals-overview' && (
+          <FinancialGoals currentSavings={currentSavings} />
+        )}
+        
+        {/* Financial Metrics View - Similar to the original dashboard key metrics */}
+        {activeTab === 'financial-metrics' && (
+          <div ref={metricsRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <Card className="metric-card border-0 shadow-sm bg-white/80 dark:bg-[#2C2C2E]/80 backdrop-blur-md rounded-2xl overflow-hidden transition-all hover:shadow-md hover:scale-[1.02] duration-300">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-[#86868B] dark:text-[#A1A1A6]">Total Income</CardTitle>
+                <div className="p-1.5 bg-[#E5F8EF] dark:bg-[#0C372A] rounded-full">
+                  <ArrowUpCircle className="h-5 w-5 text-[#34C759] dark:text-[#30D158]" />
+                </div>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <div className="text-2xl font-semibold text-[#1D1D1F] dark:text-white">${totalIncome.toFixed(2)}</div>
+                <p className="text-xs text-[#86868B] dark:text-[#A1A1A6] mt-1.5">Across all income sources</p>
+              </CardContent>
+            </Card>
+            
+            <Card className="metric-card border-0 shadow-sm bg-white/80 dark:bg-[#2C2C2E]/80 backdrop-blur-md rounded-2xl overflow-hidden transition-all hover:shadow-md hover:scale-[1.02] duration-300">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-[#86868B] dark:text-[#A1A1A6]">Total Expenses</CardTitle>
+                <div className="p-1.5 bg-[#FCF2F1] dark:bg-[#3A281E] rounded-full">
+                  <Activity className="h-5 w-5 text-[#FF3B30] dark:text-[#FF453A]" />
+                </div>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <div className="text-2xl font-semibold text-[#1D1D1F] dark:text-white">${totalExpenses.toFixed(2)}</div>
+                <p className="text-xs text-[#86868B] dark:text-[#A1A1A6] mt-1.5">Tracked across accounts</p>
+              </CardContent>
+            </Card>
+            
+            <Card className="metric-card border-0 shadow-sm bg-white/80 dark:bg-[#2C2C2E]/80 backdrop-blur-md rounded-2xl overflow-hidden transition-all hover:shadow-md hover:scale-[1.02] duration-300">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-[#86868B] dark:text-[#A1A1A6]">Liquid Balance</CardTitle>
+                <div className="p-1.5 bg-[#EDF4FE] dark:bg-[#1C3049] rounded-full">
+                  <CreditCard className="h-5 w-5 text-[#007AFF] dark:text-[#0A84FF]" />
+                </div>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <div className={`text-2xl font-semibold ${currentLiquidBalance >= 0 ? 'text-[#1D1D1F] dark:text-white' : 'text-[#FF3B30] dark:text-[#FF453A]'}`}>
+                  ${currentLiquidBalance.toFixed(2)}
+                </div>
+                <p className="text-xs text-[#86868B] dark:text-[#A1A1A6] mt-1.5">Sum of Bank & Cash accounts</p>
+              </CardContent>
+            </Card>
+            
+            <div className="metric-card">
+              <Budget totalExpenses={totalExpenses} /> 
+            </div>
+          </div>
+        )}
+        
+        {/* Finances Quick Links */}
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-semibold text-[#1D1D1F] dark:text-white">
+            Manage Your Finances
+          </h2>
           
-          <Card className="metric-card border-0 shadow-sm bg-white/80 dark:bg-[#2C2C2E]/80 backdrop-blur-md rounded-2xl overflow-hidden transition-all hover:shadow-md hover:scale-[1.02] duration-300">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-[#86868B] dark:text-[#A1A1A6]">Total Expenses</CardTitle>
-              <div className="p-1.5 bg-[#FCF2F1] dark:bg-[#3A281E] rounded-full">
-                <Activity className="h-5 w-5 text-[#FF3B30] dark:text-[#FF453A]" />
-              </div>
-            </CardHeader>
-            <CardContent className="pt-4">
-              <div className="text-2xl font-semibold text-[#1D1D1F] dark:text-white">${totalExpenses.toFixed(2)}</div>
-              <p className="text-xs text-[#86868B] dark:text-[#A1A1A6] mt-1.5">Tracked across accounts</p>
-            </CardContent>
-          </Card>
-          
-          <Card className="metric-card border-0 shadow-sm bg-white/80 dark:bg-[#2C2C2E]/80 backdrop-blur-md rounded-2xl overflow-hidden transition-all hover:shadow-md hover:scale-[1.02] duration-300">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-[#86868B] dark:text-[#A1A1A6]">Liquid Balance</CardTitle>
-              <div className="p-1.5 bg-[#EDF4FE] dark:bg-[#1C3049] rounded-full">
-                <CreditCard className="h-5 w-5 text-[#007AFF] dark:text-[#0A84FF]" />
-              </div>
-            </CardHeader>
-            <CardContent className="pt-4">
-              <div className={`text-2xl font-semibold ${currentLiquidBalance >= 0 ? 'text-[#1D1D1F] dark:text-white' : 'text-[#FF3B30] dark:text-[#FF453A]'}`}>
-                ${currentLiquidBalance.toFixed(2)}
-              </div>
-              <p className="text-xs text-[#86868B] dark:text-[#A1A1A6] mt-1.5">Sum of Bank & Cash accounts</p>
-            </CardContent>
-          </Card>
-          
-          <div className="metric-card">
-            <Budget totalExpenses={totalExpenses} /> 
+          <div className="flex gap-2">
+            <Link href="/debt-management">
+              <Button variant="outline" size="sm" className="flex items-center gap-1 h-9">
+                <span>Debt Management</span>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </Link>
+            
+            <Link href="/zero-budget">
+              <Button variant="outline" size="sm" className="flex items-center gap-1 h-9">
+                <span>Zero Budgeting</span>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </Link>
           </div>
         </div>
-
+      </div>
+      
+      <main ref={contentRef} className="flex-1 overflow-y-auto px-5 md:px-6 lg:px-8 pb-8 w-full">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left Column: Accounts & Transaction Forms */}
           <div ref={columnOneRef} className="lg:col-span-4 space-y-6">
