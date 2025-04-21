@@ -13,6 +13,7 @@ export default function AIAssistantPage() {
 
   const handleAIQuery = async (query: string): Promise<string> => {
     toast.info("Processing your question...");
+    setIsLoading(true);
 
     try {
       const response = await fetch('/api/ai-query', {
@@ -23,40 +24,74 @@ export default function AIAssistantPage() {
         body: JSON.stringify({ query }),
       });
 
+      // Log full response for debugging
+      console.log(`API Response Status: ${response.status} ${response.statusText}`);
+      
       if (!response.ok) {
         let errorMsg = `Error: ${response.statusText} (${response.status})`;
         const contentType = response.headers.get('content-type');
 
-        // Check if the response is likely JSON before trying to parse
-        if (contentType && contentType.includes('application/json')) {
-          try {
-            const errorData = await response.json();
-            errorMsg = `Error: ${errorData.error || response.statusText}`;
-            console.error("API Error Response (JSON):", errorData);
-          } catch (parseError) {
-            console.error("API Error: Failed to parse JSON error response.", parseError);
-            // Fallback to status text if JSON parsing fails
-          }
-        } else {
-          // Handle non-JSON responses (likely HTML error page)
+        try {
+          // Try to parse as JSON regardless of content type for debugging
           const errorText = await response.text();
-          console.error("API Error Response (Non-JSON):", errorText.substring(0, 500)); // Log first 500 chars
-          errorMsg = `Server error (${response.status}). Check console for details.`;
+          console.error("Raw API Error Response:", errorText);
+          
+          // Attempt to parse the response as JSON if it looks like JSON
+          if (errorText && (errorText.startsWith('{') || errorText.startsWith('['))) {
+            try {
+              const errorData = JSON.parse(errorText);
+              errorMsg = `Error: ${errorData.error || response.statusText}`;
+              if (errorData.details) {
+                errorMsg += ` - ${errorData.details}`;
+              }
+              console.error("Parsed API Error Response:", errorData);
+            } catch (jsonError) {
+              console.error("Failed to parse error response as JSON:", jsonError);
+            }
+          }
+        } catch (textError) {
+          console.error("Failed to read error response text:", textError);
         }
 
         toast.error(errorMsg);
-        return `Sorry, I encountered an error processing your request (${response.status}). Please check the console for details.`;
+        setIsLoading(false);
+        return `Sorry, I encountered an error processing your request: ${errorMsg}`;
       }
 
       // If response is OK, proceed to parse JSON
-      const result = await response.json();
+      const responseText = await response.text();
+      console.log("Raw API Success Response:", responseText);
+      
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error("Failed to parse successful response as JSON:", parseError);
+        toast.error("Failed to parse response from server");
+        setIsLoading(false);
+        return "Sorry, I received an invalid response. Please try again.";
+      }
+      
       toast.dismiss(); // Dismiss the "Processing..." toast
+      
+      if (!result.response) {
+        toast.error("Received empty response from AI service");
+        setIsLoading(false);
+        return "Sorry, I received an empty response. Please try again.";
+      }
+      
+      if (result.mode === "demo") {
+        toast.warning("Running in demo mode (no API key configured)");
+      }
+      
+      setIsLoading(false);
       return result.response;
 
     } catch (error) {
       console.error("Network or other error calling API:", error);
-      toast.error("Failed to connect to the AI service.");
-      return "Sorry, I couldn't connect to the AI service right now.";
+      toast.error(`Failed to connect to the AI service: ${error instanceof Error ? error.message : String(error)}`);
+      setIsLoading(false);
+      return `Sorry, I couldn't connect to the AI service: ${error instanceof Error ? error.message : String(error)}`;
     }
   };
 

@@ -6,6 +6,7 @@ import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
 import { Bot, Send, Loader2, SearchIcon, ChevronDown, RefreshCw, Trash2, User, Sparkles, Brain, Lightbulb } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 
 // Categories for suggested questions
 const CATEGORIES = {
@@ -117,6 +118,16 @@ export function AIAssistant({ onQuerySubmit }: AIAssistantProps) {
   useEffect(() => {
     if (response && responseRef.current) {
       setTimeout(() => setResponseAnimationComplete(true), 500);
+    }
+  }, [response]);
+
+  // After receiving response
+  useEffect(() => {
+    if (response && response.includes("AI service is currently in demo mode")) {
+      toast.info(
+        "AI Assistant is running in demo mode. To enable full functionality, configure the GOOGLE_GENAI_API_KEY environment variable.",
+        { duration: 10000 }
+      );
     }
   }, [response]);
 
