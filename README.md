@@ -18,7 +18,40 @@
 
 **Fiscal Flow** is a modern, open-source personal finance management application built with Next.js, TypeScript, and Prisma. It empowers users to take control of their financial lives with intuitive expense tracking, budget management, and AI-powered insights.
 
-![Dashboard Screenshot](./public/images/dashboard-screenshot.png)
+**Fiscal Flow** is a modern, open-source personal finance management application built with Next.js, TypeScript, and Prisma. It empowers users to take control of their financial lives with intuitive expense tracking, budget management, and AI-powered insights.
+
+<div align="center">
+  <h3>📊 Application Screenshots</h3>
+</div>
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src="./public/images/dashboard-screenshot.png" alt="Dashboard" width="100%"><br/>
+      <p align="center"><b>Comprehensive Dashboard</b></p>
+    </td>
+    <td width="50%">
+      <img src="./public/images/budgeting-screenshot.png" alt="Budgeting" width="100%"><br/>
+      <p align="center"><b>Budget Planning & Tracking</b></p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="./public/images/analytics-screenshot.png" alt="Analytics" width="100%"><br/>
+      <p align="center"><b>In-depth Financial Analytics</b></p>
+    </td>
+    <td width="50%">
+      <img src="./public/images/freelance-screenshot.png" alt="Freelance Tools" width="100%"><br/>
+      <p align="center"><b>Freelancer Income Tracking</b></p>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2">
+      <img src="./public/images/ai-screenshot.png" alt="AI Assistant" width="100%"><br/>
+      <p align="center"><b>AI-Powered Financial Assistant</b></p>
+    </td>
+  </tr>
+</table>
 
 ## ✨ Features
 
