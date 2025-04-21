@@ -38,3 +38,15 @@ yarn-error.log*
 next-env.d.ts
 
 .genkit/*
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# IDE specific files
+.vscode/
+.idx/
+
+# Local tracking files
+.modified
